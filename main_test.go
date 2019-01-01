@@ -1,4 +1,4 @@
-package iguagile_engine
+package main
 
 import "testing"
 

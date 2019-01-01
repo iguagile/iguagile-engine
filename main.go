@@ -1,4 +1,4 @@
-package iguagile_engine
+package main
 
 func main() {
 	println("a")
