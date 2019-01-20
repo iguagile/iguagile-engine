@@ -17,6 +17,8 @@ jobs:
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:
       - checkout
+      - run: golint $(go list ./... | grep -v /vendor/ | grep -v /lib/)
+      - run: go vet -all -shadowstrict $(go list ./... | grep -v /vendor/ | grep -v /lib/)
       - run: go test -v ./...
 #      - run: go get -u github.com/alecthomas/gometalinter
 #      - run: gometalinter --install
