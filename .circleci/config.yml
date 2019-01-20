@@ -5,9 +5,9 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.9
-      - image: circleci/golang:1.10
       - image: circleci/golang:1.11
+      - environment:
+          GO111MODULE: "on"
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -18,7 +18,5 @@ jobs:
     steps:
       - checkout
       - run: go get -u github.com/alecthomas/gometalinter && gometalinter --install
-      - run: go mod download
-      - run: go get -v -t -d ./...
       - run: go test -v ./...
       - run: gometalinter . --disable gocyclo
