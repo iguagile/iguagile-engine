@@ -1,9 +1,10 @@
 package main
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 	"gopkg.in/olahol/melody.v1"
-	"log"
 )
 
 func main() {
