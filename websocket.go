@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/olahol/melody.v1"
-
+	"log"
 )
 
 func main() {
@@ -11,12 +11,20 @@ func main() {
 	m := melody.New()
 
 	r.GET("/", func(c *gin.Context) {
-		m.HandleRequest(c.Writer, c.Request)
+		if err := m.HandleRequest(c.Writer, c.Request); err != nil {
+			log.Fatal(err)
+		}
+
 	})
 
 	m.HandleMessageBinary(func(session *melody.Session, bytes []byte) {
-		m.BroadcastBinary(bytes)
+		if err := m.BroadcastBinary(bytes); err != nil {
+			log.Fatal(err)
+		}
+
 	})
 
-	r.Run(":5000")
+	if err := r.Run(":5000"); err != nil {
+		log.Fatal(err)
+	}
 }
