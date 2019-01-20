@@ -21,7 +21,6 @@ func main() {
 		if err := m.BroadcastBinary(bytes); err != nil {
 			log.Fatal(err)
 		}
-
 	})
 
 	if err := r.Run(":5000"); err != nil {
