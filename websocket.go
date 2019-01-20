@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	"gopkg.in/olahol/melody.v1"
+	melody "gopkg.in/olahol/melody.v1"
 )
 
 func main() {
