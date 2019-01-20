@@ -17,7 +17,8 @@ jobs:
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:
       - checkout
-      - run: golint $(go list ./... | grep -v /vendor/ | grep -v /lib/)
+      - run: go get golang.org/x/tools/cmd/goimports && diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./lib/*")) <(printf "")
+      - run: go get -u github.com/golang/lint/golint && golint $(go list ./... | grep -v /vendor/ | grep -v /lib/)
       - run: go vet -all -shadowstrict $(go list ./... | grep -v /vendor/ | grep -v /lib/)
       - run: go test -v ./...
 #      - run: go get -u github.com/alecthomas/gometalinter
