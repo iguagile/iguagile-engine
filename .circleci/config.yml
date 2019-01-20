@@ -17,6 +17,7 @@ jobs:
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:
       - checkout
-      - run: go get -u github.com/alecthomas/gometalinter && gometalinter --install
       - run: go test -v ./...
-      - run: gometalinter . --disable gocyclo
+      - run: go get -u github.com/alecthomas/gometalinter
+      - run: gometalinter --install
+      - run: gometalinter ./...
