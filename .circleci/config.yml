@@ -20,5 +20,5 @@ jobs:
       - run: go test -v ./...
 #      - run: go get -u github.com/alecthomas/gometalinter
 #      - run: gometalinter --install
-      - curl https://git.io/vp6lP | sh
+      - run: curl https://git.io/vp6lP | sh
       - run: gometalinter ./...
