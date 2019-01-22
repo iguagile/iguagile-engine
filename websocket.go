@@ -10,17 +10,17 @@ import (
 func main() {
 	r := gin.Default()
 	m := melody.New()
+	logger := log.Logger{}
 
 	r.GET("/", func(c *gin.Context) {
 		if err := m.HandleRequest(c.Writer, c.Request); err != nil {
-			log.Fatal(err)
+			logger.Print(err)
 		}
-
 	})
 
 	m.HandleMessageBinary(func(session *melody.Session, bytes []byte) {
 		if err := m.BroadcastBinary(bytes); err != nil {
-			log.Fatal(err)
+			logger.Print(err)
 		}
 	})
 
