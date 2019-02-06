@@ -1,30 +1,25 @@
 package main
 
 import (
-	"log"
-
-	"github.com/gin-gonic/gin"
-	melody "gopkg.in/olahol/melody.v1"
+	"github.com/labstack/echo"
+	"gopkg.in/olahol/melody.v1"
+	"net/http"
 )
 
 func main() {
-	r := gin.Default()
 	m := melody.New()
-	logger := log.Logger{}
-
-	r.GET("/", func(c *gin.Context) {
-		if err := m.HandleRequest(c.Writer, c.Request); err != nil {
-			logger.Print(err)
-		}
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		http.ServeFile(c.Response().Writer, c.Request(), "index.html")
+		return c.String(http.StatusOK, "Hello, World!")
+	})
+	e.GET("/ws", func(c echo.Context) error {
+		m.HandleRequest(c.Response().Writer, c.Request())
+		return nil
 	})
 
-	m.HandleMessageBinary(func(session *melody.Session, bytes []byte) {
-		if err := m.BroadcastBinary(bytes); err != nil {
-			logger.Print(err)
-		}
+	m.HandleMessage(func(s *melody.Session, msg []byte) {
+		m.Broadcast(msg)
 	})
-
-	if err := r.Run(":5000"); err != nil {
-		log.Fatal(err)
-	}
+	e.Start(":5000")
 }
