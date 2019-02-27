@@ -1,0 +1,6 @@
+[submodule "iguagile-proto"]
+	path = iguagile-proto
+	url = git@github.com:iguagile/iguagile-proto.git
+[submodule "proto"]
+	path = proto
+	url = git@github.com:iguagile/iguagile-proto.git
