@@ -27,6 +27,9 @@ type Hub struct {
 
 	// Unregister requests from clients.
 	Unregister chan *Client
+
+	// Hub error logger.
+	log log.Logger
 }
 
 func NewHub() *Hub {
@@ -104,17 +107,27 @@ type Client struct {
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.Unregister <- c
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			c.hub.log.Println(err)
+		}
 	}()
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	c.conn.SetReadLimit(maxMessageSize)
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		c.hub.log.Println(err)
+	}
+
+	c.conn.SetPongHandler(func(string) error {
+		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			c.hub.log.Printf("error: %v", err)
+		}
+		return nil
+	})
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				c.hub.log.Printf("error: %v", err)
 			}
 			break
 		}
@@ -132,15 +145,22 @@ func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			c.hub.log.Println(err)
+		}
 	}()
 	for {
 		select {
 		case message, ok := <-c.Send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				c.hub.log.Println(err)
+			}
 			if !ok {
 				// The hub closed the channel.
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					c.hub.log.Println(err)
+				}
+
 				return
 			}
 
@@ -148,20 +168,31 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+
+			if _, err := w.Write(message); err != nil {
+				c.hub.log.Println(err)
+			}
 
 			// Add queued chat messages to the current websocket message.
 			n := len(c.Send)
 			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-c.Send)
+				if _, err := w.Write(newline); err != nil {
+					c.hub.log.Println(err)
+				}
+
+				if _, err := w.Write(<-c.Send); err != nil {
+					c.hub.log.Println(err)
+				}
 			}
 
 			if err := w.Close(); err != nil {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				c.hub.log.Println(err)
+			}
+
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
