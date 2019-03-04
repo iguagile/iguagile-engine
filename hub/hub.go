@@ -20,7 +20,7 @@ type Hub struct {
 	clients map[*Client]bool
 
 	// Inbound messages from the clients.
-	Broadcast chan []byte
+	Receive chan ReceivedData
 
 	// Register requests from the clients.
 	Register chan *Client
@@ -34,12 +34,20 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		Broadcast:  make(chan []byte),
+		Receive:    make(chan ReceivedData),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
 	}
 }
+
+//RPC Targets
+const (
+	allClients = 0
+	//otherClients         = 1
+	//allClientsBuffered   = 2
+	//otherClientsBuffered = 3
+)
 
 func (h *Hub) Run() {
 	for {
@@ -51,13 +59,15 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				close(client.Send)
 			}
-		case message := <-h.Broadcast:
+		case receivedData := <-h.Receive:
 			for client := range h.clients {
-				select {
-				case client.Send <- message:
-				default:
-					close(client.Send)
-					delete(h.clients, client)
+				if client != receivedData.Sender || receivedData.Message[0] == allClients {
+					select {
+					case client.Send <- receivedData.Message[1:]:
+					default:
+						close(client.Send)
+						delete(h.clients, client)
+					}
 				}
 			}
 		}
@@ -132,7 +142,7 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.Broadcast <- message
+		c.hub.Receive <- ReceivedData{c, message}
 	}
 }
 
@@ -214,4 +224,9 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+}
+
+type ReceivedData struct {
+	Sender  *Client
+	Message []byte
 }
