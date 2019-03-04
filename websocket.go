@@ -1,30 +1,30 @@
 package main
 
 import (
-	"log"
+	"net/http"
 
-	"github.com/gin-gonic/gin"
-	melody "gopkg.in/olahol/melody.v1"
+	"github.com/iguagile/iguagile-engine/hub"
+
+	"github.com/labstack/echo"
 )
 
 func main() {
-	r := gin.Default()
-	m := melody.New()
-	logger := log.Logger{}
 
-	r.GET("/", func(c *gin.Context) {
-		if err := m.HandleRequest(c.Writer, c.Request); err != nil {
-			logger.Print(err)
-		}
+	h := hub.NewHub()
+	go h.Run()
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		http.ServeFile(c.Response().Writer, c.Request(), "index.html")
+		return nil
 	})
 
-	m.HandleMessageBinary(func(session *melody.Session, bytes []byte) {
-		if err := m.BroadcastBinary(bytes); err != nil {
-			logger.Print(err)
-		}
+	e.GET("/ws", func(c echo.Context) error {
+		hub.ServeWs(h, c.Response().Writer, c.Request())
+		return nil
 	})
 
-	if err := r.Run(":5000"); err != nil {
-		log.Fatal(err)
+	if err := e.Start(":5000"); err != nil {
+		e.Logger.Fatal(err)
 	}
+
 }
