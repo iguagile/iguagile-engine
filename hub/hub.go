@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -29,7 +30,7 @@ type Hub struct {
 	Unregister chan *Client
 
 	// Hub error logger.
-	log log.Logger
+	log *log.Logger
 }
 
 func NewHub() *Hub {
@@ -38,6 +39,8 @@ func NewHub() *Hub {
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
+		// TODO using global logger
+		log: log.New(os.Stderr, "iguagile-engine", log.Lshortfile),
 	}
 }
 
