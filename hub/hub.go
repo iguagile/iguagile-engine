@@ -28,6 +28,8 @@ type Hub struct {
 	// Unregister requests from clients.
 	Unregister chan *Client
 
+	RpcBuffer map[*[]byte]bool
+
 	// Hub error logger.
 	log log.Logger
 }
@@ -38,6 +40,7 @@ func NewHub() *Hub {
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
+		RpcBuffer:  make(map[*[]byte]bool),
 	}
 }
 
@@ -45,8 +48,8 @@ func NewHub() *Hub {
 const (
 	allClients = 0
 	//otherClients         = 1
-	//allClientsBuffered   = 2
-	//otherClientsBuffered = 3
+	allClientsBuffered   = 2
+	otherClientsBuffered = 3
 )
 
 func (h *Hub) Run() {
@@ -54,20 +57,32 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.Register:
 			h.clients[client] = true
+			for message := range h.RpcBuffer {
+				client.Send <- *message
+			}
 		case client := <-h.Unregister:
 			if _, ok := h.clients[client]; ok {
+				for message := range client.RpcBuffer {
+					delete(h.RpcBuffer, message)
+				}
 				delete(h.clients, client)
 				close(client.Send)
 			}
 		case receivedData := <-h.Receive:
 			for client := range h.clients {
-				if client != receivedData.Sender || receivedData.Message[0] == allClients {
+				target := receivedData.Message[0]
+				message := receivedData.Message[1:]
+				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
-					case client.Send <- receivedData.Message[1:]:
+					case client.Send <- message:
 					default:
 						close(client.Send)
 						delete(h.clients, client)
 					}
+				}
+				if target == allClientsBuffered || target == otherClientsBuffered {
+					client.RpcBuffer[&message] = true
+					h.RpcBuffer[&message] = true
 				}
 			}
 		}
@@ -107,6 +122,8 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	Send chan []byte
+
+	RpcBuffer map[*[]byte]bool
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -142,7 +159,7 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.Receive <- ReceivedData{c, message}
+		c.hub.Receive <- ReceivedData{Sender: c, Message: message}
 	}
 }
 
@@ -217,7 +234,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256)}
+	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RpcBuffer: make(map[*[]byte]bool)}
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
