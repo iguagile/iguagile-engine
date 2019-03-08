@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -31,7 +32,7 @@ type Hub struct {
 	RpcBuffer map[*[]byte]bool
 
 	// Hub error logger.
-	log log.Logger
+	log *log.Logger
 }
 
 func NewHub() *Hub {
@@ -41,6 +42,8 @@ func NewHub() *Hub {
 		Unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
 		RpcBuffer:  make(map[*[]byte]bool),
+		// TODO using global logger
+		log: log.New(os.Stderr, "iguagile-engine", log.Lshortfile),
 	}
 }
 
