@@ -21,7 +21,7 @@ type Hub struct {
 	clients map[*Client]bool
 
 	// Inbound messages from the clients.
-	Broadcast chan []byte
+	Receive chan ReceivedData
 
 	// Register requests from the clients.
 	Register chan *Client
@@ -29,38 +29,63 @@ type Hub struct {
 	// Unregister requests from clients.
 	Unregister chan *Client
 
+	RpcBuffer map[*[]byte]bool
+
 	// Hub error logger.
 	log *log.Logger
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		Broadcast:  make(chan []byte),
+		Receive:    make(chan ReceivedData),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
+		RpcBuffer:  make(map[*[]byte]bool),
 		// TODO using global logger
 		log: log.New(os.Stderr, "iguagile-engine", log.Lshortfile),
 	}
 }
+
+//RPC Targets
+const (
+	allClients = 0
+	//otherClients         = 1
+	allClientsBuffered   = 2
+	otherClientsBuffered = 3
+)
 
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
 			h.clients[client] = true
+			for message := range h.RpcBuffer {
+				client.Send <- *message
+			}
 		case client := <-h.Unregister:
 			if _, ok := h.clients[client]; ok {
+				for message := range client.RpcBuffer {
+					delete(h.RpcBuffer, message)
+				}
 				delete(h.clients, client)
 				close(client.Send)
 			}
-		case message := <-h.Broadcast:
+		case receivedData := <-h.Receive:
 			for client := range h.clients {
-				select {
-				case client.Send <- message:
-				default:
-					close(client.Send)
-					delete(h.clients, client)
+				target := receivedData.Message[0]
+				message := receivedData.Message[1:]
+				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
+					select {
+					case client.Send <- message:
+					default:
+						close(client.Send)
+						delete(h.clients, client)
+					}
+				}
+				if target == allClientsBuffered || target == otherClientsBuffered {
+					client.RpcBuffer[&message] = true
+					h.RpcBuffer[&message] = true
 				}
 			}
 		}
@@ -100,6 +125,8 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	Send chan []byte
+
+	RpcBuffer map[*[]byte]bool
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -135,7 +162,7 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.Broadcast <- message
+		c.hub.Receive <- ReceivedData{Sender: c, Message: message}
 	}
 }
 
@@ -210,11 +237,16 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256)}
+	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RpcBuffer: make(map[*[]byte]bool)}
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+}
+
+type ReceivedData struct {
+	Sender  *Client
+	Message []byte
 }
