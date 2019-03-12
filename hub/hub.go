@@ -72,9 +72,9 @@ func (h *Hub) Run() {
 				close(client.Send)
 			}
 		case receivedData := <-h.Receive:
+			target := receivedData.Message[0]
+			message := receivedData.Message[1:]
 			for client := range h.clients {
-				target := receivedData.Message[0]
-				message := receivedData.Message[1:]
 				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
 					case client.Send <- message:
@@ -83,10 +83,10 @@ func (h *Hub) Run() {
 						delete(h.clients, client)
 					}
 				}
-				if target == allClientsBuffered || target == otherClientsBuffered {
-					client.RpcBuffer[&message] = true
-					h.RpcBuffer[&message] = true
-				}
+			}
+			if target == allClientsBuffered || target == otherClientsBuffered {
+				receivedData.Sender.RpcBuffer[&message] = true
+				h.RpcBuffer[&message] = true
 			}
 		}
 	}
