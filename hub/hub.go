@@ -56,23 +56,28 @@ const (
 	otherClientsBuffered = 3
 )
 
+//Message types
+const (
+	//transform = 0
+	//rpc = 1
+	openMessage  = 2
+	closeMessage = 3
+)
+
 var nextId uint32 = 1
 
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
+			notify(h, client, openMessage)
 			h.clients[client] = true
 			for message := range h.RpcBuffer {
 				client.Send <- *message
 			}
 		case client := <-h.Unregister:
 			if _, ok := h.clients[client]; ok {
-				for message := range client.RpcBuffer {
-					delete(h.RpcBuffer, message)
-				}
-				delete(h.clients, client)
-				close(client.Send)
+				closeConnection(h, client)
 			}
 		case receivedData := <-h.Receive:
 			target := receivedData.Message[0]
@@ -82,8 +87,7 @@ func (h *Hub) Run() {
 					select {
 					case client.Send <- message:
 					default:
-						close(client.Send)
-						delete(h.clients, client)
+						closeConnection(h, client)
 					}
 				}
 			}
@@ -99,6 +103,22 @@ func appendIdToMessage(c *Client, message ...byte) []byte {
 	id := make([]byte, 4)
 	binary.LittleEndian.PutUint32(id, c.Id)
 	return append(id, message...)
+}
+
+func notify(h *Hub, c *Client, messageType byte) {
+	for client := range h.clients {
+		message := appendIdToMessage(c, messageType)
+		client.Send <- message
+	}
+}
+
+func closeConnection(h *Hub, c *Client) {
+	notify(h, c, closeMessage)
+	for message := range c.RpcBuffer {
+		delete(h.RpcBuffer, message)
+	}
+	delete(h.clients, c)
+	close(c.Send)
 }
 
 const (
