@@ -6,6 +6,7 @@ package hub
 
 import (
 	"bytes"
+	"encoding/binary"
 	"log"
 	"net/http"
 	"os"
@@ -55,6 +56,8 @@ const (
 	otherClientsBuffered = 3
 )
 
+var nextId uint32 = 1
+
 func (h *Hub) Run() {
 	for {
 		select {
@@ -73,7 +76,7 @@ func (h *Hub) Run() {
 			}
 		case receivedData := <-h.Receive:
 			target := receivedData.Message[0]
-			message := receivedData.Message[1:]
+			message := appendIdToMessage(receivedData.Sender, receivedData.Message[1:]...)
 			for client := range h.clients {
 				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
@@ -90,6 +93,12 @@ func (h *Hub) Run() {
 			}
 		}
 	}
+}
+
+func appendIdToMessage(c *Client, message ...byte) []byte {
+	id := make([]byte, 4)
+	binary.LittleEndian.PutUint32(id, c.Id)
+	return append(id, message...)
 }
 
 const (
@@ -127,6 +136,8 @@ type Client struct {
 	Send chan []byte
 
 	RpcBuffer map[*[]byte]bool
+
+	Id uint32
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -225,7 +236,8 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RpcBuffer: make(map[*[]byte]bool)}
+	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RpcBuffer: make(map[*[]byte]bool), Id: nextId}
+	nextId++
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
