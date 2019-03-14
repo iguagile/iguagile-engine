@@ -1,30 +1,19 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/iguagile/iguagile-engine/hub"
-
-	"github.com/labstack/echo"
+	"log"
+	"net/http"
 )
 
 func main() {
 
 	h := hub.NewHub()
 	go h.Run()
-	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		http.ServeFile(c.Response().Writer, c.Request(), "index.html")
-		return nil
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		hub.ServeWs(h, writer, request)
 	})
-
-	e.GET("/ws", func(c echo.Context) error {
-		hub.ServeWs(h, c.Response().Writer, c.Request())
-		return nil
-	})
-
-	if err := e.Start(":5000"); err != nil {
-		e.Logger.Fatal(err)
+	if err := http.ListenAndServe(":5000", nil); err != nil {
+		log.Fatal(err)
 	}
-
 }
