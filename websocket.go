@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/iguagile/iguagile-engine/hub"
 	"log"
 	"net/http"
+
+	"github.com/iguagile/iguagile-engine/hub"
 )
 
 func main() {
