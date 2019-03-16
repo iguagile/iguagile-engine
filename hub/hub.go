@@ -67,6 +67,7 @@ const (
 
 var nextID uint32 = 1
 
+// Run is provides backend synchronize goroutine.
 func (h *Hub) Run() {
 	for {
 		select {
