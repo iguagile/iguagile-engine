@@ -30,25 +30,26 @@ type Hub struct {
 	// Unregister requests from clients.
 	Unregister chan *Client
 
-	RpcBuffer map[*[]byte]bool
+	RPCBuffer map[*[]byte]bool
 
 	// Hub error logger.
 	log *log.Logger
 }
 
+// NewHub is Hub constructed.
 func NewHub() *Hub {
 	return &Hub{
 		Receive:    make(chan ReceivedData),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
-		RpcBuffer:  make(map[*[]byte]bool),
+		RPCBuffer:  make(map[*[]byte]bool),
 		// TODO using global logger
 		log: log.New(os.Stderr, "iguagile-engine", log.Lshortfile),
 	}
 }
 
-//RPC Targets
+// RPC Targets
 const (
 	allClients = 0
 	//otherClients         = 1
@@ -56,7 +57,7 @@ const (
 	otherClientsBuffered = 3
 )
 
-//Message types
+// Message types
 const (
 	//transform = 0
 	//rpc = 1
@@ -64,15 +65,16 @@ const (
 	closeMessage = 3
 )
 
-var nextId uint32 = 1
+var nextID uint32 = 1
 
+// Run is provides backend synchronize goroutine.
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
 			notify(h, client, openMessage)
 			h.clients[client] = true
-			for message := range h.RpcBuffer {
+			for message := range h.RPCBuffer {
 				client.Send <- *message
 			}
 		case client := <-h.Unregister:
@@ -81,7 +83,7 @@ func (h *Hub) Run() {
 			}
 		case receivedData := <-h.Receive:
 			target := receivedData.Message[0]
-			message := appendIdToMessage(receivedData.Sender, receivedData.Message[1:]...)
+			message := appendIDToMessage(receivedData.Sender, receivedData.Message[1:]...)
 			for client := range h.clients {
 				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
@@ -92,30 +94,30 @@ func (h *Hub) Run() {
 				}
 			}
 			if target == allClientsBuffered || target == otherClientsBuffered {
-				receivedData.Sender.RpcBuffer[&message] = true
-				h.RpcBuffer[&message] = true
+				receivedData.Sender.RPCBuffer[&message] = true
+				h.RPCBuffer[&message] = true
 			}
 		}
 	}
 }
 
-func appendIdToMessage(c *Client, message ...byte) []byte {
+func appendIDToMessage(c *Client, message ...byte) []byte {
 	id := make([]byte, 4)
-	binary.LittleEndian.PutUint32(id, c.Id)
+	binary.LittleEndian.PutUint32(id, c.ID)
 	return append(id, message...)
 }
 
 func notify(h *Hub, c *Client, messageType byte) {
 	for client := range h.clients {
-		message := appendIdToMessage(c, messageType)
+		message := appendIDToMessage(c, messageType)
 		client.Send <- message
 	}
 }
 
 func closeConnection(h *Hub, c *Client) {
 	notify(h, c, closeMessage)
-	for message := range c.RpcBuffer {
-		delete(h.RpcBuffer, message)
+	for message := range c.RPCBuffer {
+		delete(h.RPCBuffer, message)
 	}
 	delete(h.clients, c)
 	close(c.Send)
@@ -155,9 +157,9 @@ type Client struct {
 	// Buffered channel of outbound messages.
 	Send chan []byte
 
-	RpcBuffer map[*[]byte]bool
+	RPCBuffer map[*[]byte]bool
 
-	Id uint32
+	ID uint32
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -256,8 +258,8 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RpcBuffer: make(map[*[]byte]bool), Id: nextId}
-	nextId++
+	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RPCBuffer: make(map[*[]byte]bool), ID: nextID}
+	nextID++
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
@@ -266,6 +268,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 }
 
+// ReceivedData is client side transfer data struct.
 type ReceivedData struct {
 	Sender  *Client
 	Message []byte
