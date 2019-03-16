@@ -6,6 +6,7 @@ package hub
 
 import (
 	"bytes"
+	"encoding/binary"
 	"log"
 	"net/http"
 	"os"
@@ -55,32 +56,38 @@ const (
 	otherClientsBuffered = 3
 )
 
+//Message types
+const (
+	//transform = 0
+	//rpc = 1
+	openMessage  = 2
+	closeMessage = 3
+)
+
+var nextId uint32 = 1
+
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
+			notify(h, client, openMessage)
 			h.clients[client] = true
 			for message := range h.RpcBuffer {
 				client.Send <- *message
 			}
 		case client := <-h.Unregister:
 			if _, ok := h.clients[client]; ok {
-				for message := range client.RpcBuffer {
-					delete(h.RpcBuffer, message)
-				}
-				delete(h.clients, client)
-				close(client.Send)
+				closeConnection(h, client)
 			}
 		case receivedData := <-h.Receive:
 			target := receivedData.Message[0]
-			message := receivedData.Message[1:]
+			message := appendIdToMessage(receivedData.Sender, receivedData.Message[1:]...)
 			for client := range h.clients {
 				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
 					case client.Send <- message:
 					default:
-						close(client.Send)
-						delete(h.clients, client)
+						closeConnection(h, client)
 					}
 				}
 			}
@@ -90,6 +97,28 @@ func (h *Hub) Run() {
 			}
 		}
 	}
+}
+
+func appendIdToMessage(c *Client, message ...byte) []byte {
+	id := make([]byte, 4)
+	binary.LittleEndian.PutUint32(id, c.Id)
+	return append(id, message...)
+}
+
+func notify(h *Hub, c *Client, messageType byte) {
+	for client := range h.clients {
+		message := appendIdToMessage(c, messageType)
+		client.Send <- message
+	}
+}
+
+func closeConnection(h *Hub, c *Client) {
+	notify(h, c, closeMessage)
+	for message := range c.RpcBuffer {
+		delete(h.RpcBuffer, message)
+	}
+	delete(h.clients, c)
+	close(c.Send)
 }
 
 const (
@@ -127,6 +156,8 @@ type Client struct {
 	Send chan []byte
 
 	RpcBuffer map[*[]byte]bool
+
+	Id uint32
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -203,18 +234,6 @@ func (c *Client) writePump() {
 				c.hub.log.Println(err)
 			}
 
-			// Add queued chat messages to the current websocket message.
-			n := len(c.Send)
-			for i := 0; i < n; i++ {
-				if _, err := w.Write(newline); err != nil {
-					c.hub.log.Println(err)
-				}
-
-				if _, err := w.Write(<-c.Send); err != nil {
-					c.hub.log.Println(err)
-				}
-			}
-
 			if err := w.Close(); err != nil {
 				return
 			}
@@ -237,7 +256,8 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RpcBuffer: make(map[*[]byte]bool)}
+	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RpcBuffer: make(map[*[]byte]bool), Id: nextId}
+	nextId++
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
