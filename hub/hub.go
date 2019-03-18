@@ -60,7 +60,8 @@ const (
 // Message types
 const (
 	openMessage  = iota
-	closeMessage = iota
+	openMessage = iota
+	closeMessage
 )
 
 var nextID uint32 = 1
