@@ -60,7 +60,6 @@ const (
 // Message types
 const (
 	openMessage  = iota
-	openMessage = iota
 	closeMessage
 )
 
