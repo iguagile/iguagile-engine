@@ -12,6 +12,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -19,16 +21,16 @@ import (
 // clients.
 type Hub struct {
 	// Registered clients.
-	clients map[*Client]bool
+	clients map[*client]bool
 
 	// Inbound messages from the clients.
 	Receive chan ReceivedData
 
 	// Register requests from the clients.
-	Register chan *Client
+	Register chan *client
 
 	// Unregister requests from clients.
-	Unregister chan *Client
+	Unregister chan *client
 
 	RPCBuffer map[*[]byte]bool
 
@@ -40,9 +42,9 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		Receive:    make(chan ReceivedData),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		Register:   make(chan *client),
+		Unregister: make(chan *client),
+		clients:    make(map[*client]bool),
 		RPCBuffer:  make(map[*[]byte]bool),
 		// TODO using global logger
 		log: log.New(os.Stderr, "iguagile-engine", log.Lshortfile),
@@ -99,20 +101,20 @@ func (h *Hub) Run() {
 	}
 }
 
-func appendIDToMessage(c *Client, message ...byte) []byte {
+func appendIDToMessage(c *client, message ...byte) []byte {
 	id := make([]byte, 4)
 	binary.LittleEndian.PutUint32(id, c.ID)
 	return append(id, message...)
 }
 
-func notify(h *Hub, c *Client, messageType byte) {
+func notify(h *Hub, c *client, messageType byte) {
 	for client := range h.clients {
 		message := appendIDToMessage(c, messageType)
 		client.Send <- message
 	}
 }
 
-func closeConnection(h *Hub, c *Client) {
+func closeConnection(h *Hub, c *client) {
 	notify(h, c, closeMessage)
 	for message := range c.RPCBuffer {
 		delete(h.RPCBuffer, message)
@@ -145,8 +147,8 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-// Client is a middleman between the websocket connection and the hub.
-type Client struct {
+// client is a middleman between the websocket connection and the hub.
+type client struct {
 	hub *Hub
 
 	// The websocket connection.
@@ -157,22 +159,24 @@ type Client struct {
 
 	RPCBuffer map[*[]byte]bool
 
-	ID uint32
+	ID string
 }
 
-var nextID uint32 = 1
-
-// NewClient is Client constructor.
-func NewClient(hub *Hub, conn *websocket.Conn) *Client {
-	c := &Client{
+// NewClient is client constructor.
+func NewClient(hub *Hub, conn *websocket.Conn) *client {
+	c := &client{
 		hub:       hub,
 		conn:      conn,
 		Send:      make(chan []byte, 256),
 		RPCBuffer: make(map[*[]byte]bool),
-		ID:        nextID,
 	}
 
-	nextID++
+	uid, err := uuid.NewUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	c.ID = uid.String()
+
 	return c
 }
 
@@ -181,7 +185,7 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) readPump() {
+func (c *client) readPump() {
 	defer func() {
 		c.hub.Unregister <- c
 		if err := c.conn.Close(); err != nil {
@@ -218,7 +222,7 @@ func (c *Client) readPump() {
 // A goroutine running writePump is started for each connection. The
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *Client) writePump() {
+func (c *client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -284,6 +288,6 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 // ReceivedData is client side transfer data struct.
 type ReceivedData struct {
-	Sender  *Client
+	Sender  *client
 	Message []byte
 }
