@@ -65,8 +65,6 @@ const (
 	closeMessage = 3
 )
 
-var nextID uint32 = 1
-
 // Run is provides backend synchronize goroutine.
 func (h *Hub) Run() {
 	for {
@@ -160,6 +158,22 @@ type Client struct {
 	RPCBuffer map[*[]byte]bool
 
 	ID uint32
+}
+
+var nextID uint32 = 1
+
+// NewClient is Client constructor.
+func NewClient(hub *Hub, conn *websocket.Conn) *Client {
+	c := &Client{
+		hub:       hub,
+		conn:      conn,
+		Send:      make(chan []byte, 256),
+		RPCBuffer: make(map[*[]byte]bool),
+		ID:        nextID,
+	}
+
+	nextID++
+	return c
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -258,8 +272,8 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RPCBuffer: make(map[*[]byte]bool), ID: nextID}
-	nextID++
+
+	client := NewClient(hub, conn)
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
