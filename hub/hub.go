@@ -20,16 +20,16 @@ import (
 // clients.
 type Hub struct {
 	// Registered clients.
-	clients map[*client]bool
+	clients map[*Client]bool
 
 	// Inbound messages from the clients.
 	Receive chan ReceivedData
 
 	// Register requests from the clients.
-	Register chan *client
+	Register chan *Client
 
 	// Unregister requests from clients.
-	Unregister chan *client
+	Unregister chan *Client
 
 	RPCBuffer map[*[]byte]bool
 
@@ -41,9 +41,9 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		Receive:    make(chan ReceivedData),
-		Register:   make(chan *client),
-		Unregister: make(chan *client),
-		clients:    make(map[*client]bool),
+		Register:   make(chan *Client),
+		Unregister: make(chan *Client),
+		clients:    make(map[*Client]bool),
 		RPCBuffer:  make(map[*[]byte]bool),
 		// TODO using global logger
 		log: log.New(os.Stderr, "iguagile-engine", log.Lshortfile),
@@ -100,18 +100,18 @@ func (h *Hub) Run() {
 	}
 }
 
-func appendIDToMessage(c *client, message ...byte) []byte {
+func appendIDToMessage(c *Client, message ...byte) []byte {
 	return append([]byte(c.ID), message...)
 }
 
-func notify(h *Hub, c *client, messageType byte) {
+func notify(h *Hub, c *Client, messageType byte) {
 	for client := range h.clients {
 		message := appendIDToMessage(c, messageType)
 		client.Send <- message
 	}
 }
 
-func closeConnection(h *Hub, c *client) {
+func closeConnection(h *Hub, c *Client) {
 	notify(h, c, closeMessage)
 	for message := range c.RPCBuffer {
 		delete(h.RPCBuffer, message)
@@ -144,7 +144,8 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-type client struct {
+// Client is a middleman between the websocket connection and the hub.
+type Client struct {
 	hub *Hub
 
 	// The websocket connection.
@@ -158,12 +159,9 @@ type client struct {
 	ID string
 }
 
-// client is a middleman between the websocket connection and the hub.
-type Client = client
-
-// NewClient is client constructor.
+// NewClient is Client constructor.
 func NewClient(hub *Hub, conn *websocket.Conn) *Client {
-	c := &client{
+	c := &Client{
 		hub:       hub,
 		conn:      conn,
 		Send:      make(chan []byte, 256),
@@ -184,7 +182,7 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *client) readPump() {
+func (c *Client) readPump() {
 	defer func() {
 		c.hub.Unregister <- c
 		if err := c.conn.Close(); err != nil {
@@ -221,7 +219,7 @@ func (c *client) readPump() {
 // A goroutine running writePump is started for each connection. The
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *client) writePump() {
+func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -285,8 +283,8 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 }
 
-// ReceivedData is client side transfer data struct.
+// ReceivedData is Client side transfer data struct.
 type ReceivedData struct {
-	Sender  *client
+	Sender  *Client
 	Message []byte
 }
