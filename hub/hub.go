@@ -6,7 +6,6 @@ package hub
 
 import (
 	"bytes"
-	"encoding/binary"
 	"log"
 	"net/http"
 	"os"
@@ -102,9 +101,7 @@ func (h *Hub) Run() {
 }
 
 func appendIDToMessage(c *client, message ...byte) []byte {
-	id := make([]byte, 4)
-	binary.LittleEndian.PutUint32(id, c.ID)
-	return append(id, message...)
+	return append([]byte(c.ID), message...)
 }
 
 func notify(h *Hub, c *client, messageType byte) {
@@ -147,7 +144,6 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-// client is a middleman between the websocket connection and the hub.
 type client struct {
 	hub *Hub
 
@@ -162,8 +158,11 @@ type client struct {
 	ID string
 }
 
+// client is a middleman between the websocket connection and the hub.
+type Client = client
+
 // NewClient is client constructor.
-func NewClient(hub *Hub, conn *websocket.Conn) *client {
+func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 	c := &client{
 		hub:       hub,
 		conn:      conn,
