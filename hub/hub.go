@@ -6,11 +6,12 @@ package hub
 
 import (
 	"bytes"
-	"encoding/binary"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/gorilla/websocket"
 )
@@ -63,8 +64,6 @@ const (
 	closeMessage
 )
 
-var nextID uint32 = 1
-
 // Run is provides backend synchronize goroutine.
 func (h *Hub) Run() {
 	for {
@@ -100,9 +99,7 @@ func (h *Hub) Run() {
 }
 
 func appendIDToMessage(c *Client, message ...byte) []byte {
-	id := make([]byte, 4)
-	binary.LittleEndian.PutUint32(id, c.ID)
-	return append(id, message...)
+	return append([]byte(c.ID), message...)
 }
 
 func notify(h *Hub, c *Client, messageType byte) {
@@ -157,7 +154,25 @@ type Client struct {
 
 	RPCBuffer map[*[]byte]bool
 
-	ID uint32
+	ID string
+}
+
+// NewClient is Client constructor.
+func NewClient(hub *Hub, conn *websocket.Conn) *Client {
+	c := &Client{
+		hub:       hub,
+		conn:      conn,
+		Send:      make(chan []byte, 256),
+		RPCBuffer: make(map[*[]byte]bool),
+	}
+
+	uid, err := uuid.NewUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	c.ID = uid.String()
+
+	return c
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -256,8 +271,8 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256), RPCBuffer: make(map[*[]byte]bool), ID: nextID}
-	nextID++
+
+	client := NewClient(hub, conn)
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
@@ -266,7 +281,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 }
 
-// ReceivedData is client side transfer data struct.
+// ReceivedData is Client side transfer data struct.
 type ReceivedData struct {
 	Sender  *Client
 	Message []byte
