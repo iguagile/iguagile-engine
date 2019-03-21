@@ -82,7 +82,7 @@ func (h *Hub) Run() {
 			}
 		case receivedData := <-h.Receive:
 			target := receivedData.Message[0]
-			message := appendIDToMessage(receivedData.Sender, receivedData.Message[1:]...)
+			message := append(receivedData.Sender.ID, receivedData.Message[1:]...)
 			for client := range h.clients {
 				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
@@ -100,13 +100,9 @@ func (h *Hub) Run() {
 	}
 }
 
-func appendIDToMessage(c *Client, message ...byte) []byte {
-	return append(c.ID, message...)
-}
-
 func notify(h *Hub, c *Client, messageType byte) {
 	for client := range h.clients {
-		message := appendIDToMessage(c, messageType)
+		message := append(c.ID, messageType)
 		client.Send <- message
 	}
 }
