@@ -156,11 +156,11 @@ type Client struct {
 
 	RPCBuffer map[*[]byte]bool
 
-	ID string
+	ID []byte
 }
 
 // NewClient is Client constructor.
-func NewClient(hub *Hub, conn *websocket.Conn) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn) (*Client, error) {
 	c := &Client{
 		hub:       hub,
 		conn:      conn,
@@ -172,9 +172,9 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 	if err != nil {
 		log.Fatal(err)
 	}
-	c.ID = uid.String()
+	c.ID, err = uid.MarshalBinary()
 
-	return c
+	return c, err
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -274,7 +274,11 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := NewClient(hub, conn)
+	client, err := NewClient(hub, conn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	client.hub.Register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
