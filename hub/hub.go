@@ -101,7 +101,7 @@ func (h *Hub) Run() {
 }
 
 func appendIDToMessage(c *Client, message ...byte) []byte {
-	return append([]byte(c.ID), message...)
+	return append(c.ID, message...)
 }
 
 func notify(h *Hub, c *Client, messageType byte) {
