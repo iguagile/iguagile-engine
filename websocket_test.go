@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/iguagile/iguagile-engine/hub"
 
@@ -12,7 +15,6 @@ import (
 
 func TestConnection(t *testing.T) {
 
-	wg := &sync.WaitGroup{}
 	srv := &http.Server{
 		Addr: "127.0.0.1:5000",
 	}
@@ -31,16 +33,25 @@ func TestConnection(t *testing.T) {
 		}
 	}(t)
 
-	u := "ws://127.0.0.1:5000/"
+	time.Sleep(1 * time.Second)
+	fmt.Println("RUN")
+	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
-	go func(t *testing.T) {
-		ws, _, err := websocket.DefaultDialer.Dial(u, nil)
-		if err != nil {
+	go func(t *testing.T, wg *sync.WaitGroup) {
+		u := url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/ws"}
+		ws, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
+		//ws, resp, err := dialer.Dial(u, nil)
+		if err == websocket.ErrBadHandshake {
+			t.Logf("handshake failed with status %d", resp.StatusCode)
 			t.Fatalf("%v", err)
 		}
 
-		defer ws.Close()
+		defer func(ws *websocket.Conn, wg *sync.WaitGroup) {
+			if err := ws.Close(); err != nil {
+				t.Error(err)
+			}
+		}(ws, wg)
 
 		_, p, err := ws.ReadMessage()
 		if err != nil {
@@ -58,20 +69,29 @@ func TestConnection(t *testing.T) {
 		}
 		t.Log(string(data))
 		wg.Done()
-	}(t)
 
-	go func(t *testing.T) {
-		ws, _, err := websocket.DefaultDialer.Dial(u, nil)
-		if err != nil {
+	}(t, wg)
+
+	go func(t *testing.T, wg *sync.WaitGroup) {
+		u := url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
+		ws, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
+		if err == websocket.ErrBadHandshake {
+			t.Logf("handshake failed with status %d", resp.StatusCode)
 			t.Errorf("%v", err)
 		}
-		defer ws.Close()
+		defer func(ws *websocket.Conn, wg *sync.WaitGroup) {
+			if err := ws.Close(); err != nil {
+				t.Error(err)
+			}
+		}(ws, wg)
+
 		data := []byte("11hello1")
 		if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
 			t.Errorf("%v", err)
 		}
 		wg.Done()
-	}(t)
+
+	}(t, wg)
 	wg.Wait()
 	srv.Close()
 }
