@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"reflect"
 	"sync"
 	"testing"
 
@@ -14,13 +13,11 @@ import (
 func TestConnection(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 	srv := &http.Server{
 		Addr: "127.0.0.1:5000",
 	}
 
-	wg.Add(1)
-	go func() {
+	go func(t *testing.T) {
 
 		h := hub.NewHub()
 		go h.Run()
@@ -30,18 +27,14 @@ func TestConnection(t *testing.T) {
 		srv.Handler = http.HandlerFunc(f)
 
 		if err := srv.ListenAndServe(); err != nil {
-			wg.Done()
-			t.Fatal(err)
+			t.Error(err)
 		}
-		srv.RegisterOnShutdown(func() {
-			wg.Done()
-		})
-	}()
+	}(t)
 
 	u := "ws://127.0.0.1:5000/"
+	wg.Add(2)
 
-	data := []byte("hello1")
-	go func() {
+	go func(t *testing.T) {
 		ws, _, err := websocket.DefaultDialer.Dial(u, nil)
 		if err != nil {
 			t.Fatalf("%v", err)
@@ -51,36 +44,34 @@ func TestConnection(t *testing.T) {
 
 		_, p, err := ws.ReadMessage()
 		if err != nil {
-			wg.Done()
-
 			t.Fatalf("%v", err)
 		}
-		if !reflect.DeepEqual(data, p) {
-			wg.Done()
-			srv.Close()
-			println(string(p))
-			t.Fatalf("bad message")
+		// remove uuid
+		received := p[16:]
+		// remove mesType
+		data := received[1:]
+
+		if "hello1" != string(data) {
+			t.Error("bad message")
+			t.Errorf("%v", data)
+			t.Errorf("%s", data)
 		}
-
+		t.Log(string(data))
 		wg.Done()
-		srv.Close()
-	}()
+	}(t)
 
-	wg.Add(1)
-	go func() {
+	go func(t *testing.T) {
 		ws, _, err := websocket.DefaultDialer.Dial(u, nil)
 		if err != nil {
-			wg.Done()
-			t.Fatalf("%v", err)
+			t.Errorf("%v", err)
 		}
 		defer ws.Close()
-
+		data := []byte("11hello1")
 		if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
-			wg.Done()
-			t.Fatalf("%v", err)
+			t.Errorf("%v", err)
 		}
 		wg.Done()
-	}()
+	}(t)
 	wg.Wait()
-
+	srv.Close()
 }
