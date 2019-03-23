@@ -53,9 +53,13 @@ func TestConnection(t *testing.T) {
 			}
 		}(ws, wg)
 
-		_, p, err := ws.ReadMessage()
+		messageType, p, err := ws.ReadMessage()
 		if err != nil {
 			t.Fatalf("%v", err)
+		}
+
+		if messageType != websocket.BinaryMessage {
+			t.Fail()
 		}
 		// remove uuid
 		received := p[16:]
