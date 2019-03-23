@@ -61,7 +61,8 @@ func TestConnection(t *testing.T) {
 			t.Logf("%v\n", p)
 			t.Logf("%s\n", p)
 			// remove uuid
-			received := p[36:]
+			received := p[16:]
+			//received := p[36:]
 			// remove mesType
 			data := received[1:]
 
