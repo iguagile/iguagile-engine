@@ -107,7 +107,7 @@ func (h *Hub) Run() {
 
 func notify(h *Hub, c *Client, messageType byte, subType byte) {
 	for client := range h.clients {
-		message := append(append(c.ID, messageType), subType)
+		message := append(c.ID, messageType, subType)
 		client.Send <- message
 	}
 }
