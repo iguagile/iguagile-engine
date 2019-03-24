@@ -1,18 +1,28 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gorilla/websocket"
 	"github.com/iguagile/iguagile-engine/hub"
 )
 
-const binaryUUIDLength = 16
-const messageTypeLength = 1
+const lengthUUID = 16
+const lengthMessageType = 1
+const lengthSubType = 1
+
+// Message types
+const (
+	systemMessage = iota
+	dataMessage
+)
 
 var uri = url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
 
@@ -43,9 +53,9 @@ func TestConnection(t *testing.T) {
 		send string
 		want string
 	}{
-		{"00hello1", "hello1"},
-		{"00MSG", "MSG"},
-		{"00HOGE", "HOGE"},
+		{"109hello1", "hello1"},
+		{"109MSG", "MSG"},
+		{"109HOGE", "HOGE"},
 	}
 
 	srv := NewServer(t)
@@ -100,29 +110,53 @@ func TestConnection(t *testing.T) {
 }
 
 func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string) {
-	messageType, p, err := ws.ReadMessage()
-	if err != nil {
-		t.Errorf("%v", err)
+	for {
+
+		messageType, p, err := ws.ReadMessage()
+		if err != nil {
+			t.Errorf("%v", err)
+		}
+
+		if messageType != websocket.BinaryMessage {
+			t.Error("support binary message only")
+		}
+
+		uid := p[:lengthUUID]
+
+		msgType := p[lengthUUID : lengthUUID+lengthMessageType]
+
+		// SKIP SYSTEM MESSAGE
+		if msgType[0] == systemMessage {
+
+			sub := p[lengthUUID+lengthMessageType : lengthUUID+lengthMessageType+lengthSubType]
+			switch sub[0] {
+			case 0:
+
+				id, err := uuid.FromBytes(uid[:])
+				if err != nil {
+					log.Fatal(err)
+				}
+				t.Logf("new client %s", id)
+
+			}
+
+			continue
+		}
+
+		// perse subtype
+		data := p[lengthUUID+lengthMessageType+lengthSubType:]
+		t.Logf("%s\n", data)
+		if want != string(data) {
+			t.Error("bad message")
+			t.Errorf("%v\n", data)
+			t.Errorf("%s\n", data)
+		}
+		t.Log(string(data))
+
+		// ws done
+		wg.Done()
+		break
 	}
-
-	if messageType != websocket.BinaryMessage {
-		t.Error("support binary message only")
-	}
-
-	// remove uuid
-	received := p[binaryUUIDLength:]
-	// remove mesType
-	data := received[messageTypeLength:]
-
-	if want != string(data) {
-		t.Error("bad message")
-		t.Errorf("%v\n", data)
-		t.Errorf("%s\n", data)
-	}
-	t.Log(string(data))
-
-	// ws done
-	wg.Done()
 }
 
 func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send string) {

@@ -57,10 +57,16 @@ const (
 	otherClientsBuffered = 3
 )
 
-// Message types
+// Messagetypes
 const (
-	openMessage = iota
-	closeMessage
+	systemMessage = iota
+	dataMessage
+)
+
+// SubTypes
+const (
+	newConnection = iota
+	exitConnection
 )
 
 // Run is provides backend synchronize goroutine.
@@ -68,7 +74,7 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			//notify(h, client, openMessage)
+			notify(h, client, systemMessage, newConnection)
 			h.clients[client] = true
 			for message := range h.RPCBuffer {
 				client.Send <- *message
@@ -97,15 +103,15 @@ func (h *Hub) Run() {
 	}
 }
 
-func notify(h *Hub, c *Client, messageType byte) {
+func notify(h *Hub, c *Client, messageType byte, subType byte) {
 	for client := range h.clients {
-		message := append(c.ID, messageType)
+		message := append(c.ID, messageType, subType)
 		client.Send <- message
 	}
 }
 
 func closeConnection(h *Hub, c *Client) {
-	//notify(h, c, closeMessage)
+	notify(h, c, systemMessage, exitConnection)
 	for message := range c.RPCBuffer {
 		delete(h.RPCBuffer, message)
 	}
@@ -126,11 +132,6 @@ const (
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
 )
-
-//var (
-//	newline = []byte{'\n'}
-//	space   = []byte{' '}
-//)
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
