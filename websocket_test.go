@@ -99,8 +99,8 @@ func TestConnection(t *testing.T) {
 
 }
 
-func receiver(receiver *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string) {
-	messageType, p, err := receiver.ReadMessage()
+func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string) {
+	messageType, p, err := ws.ReadMessage()
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -121,27 +121,17 @@ func receiver(receiver *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want s
 	}
 	t.Log(string(data))
 
-	// receiver done
+	// ws done
 	wg.Done()
-
-	// wait sender and receivers done
-	wg.Wait()
-
 }
 
-func sender(sender *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send string) {
-
-	sender, _, err := websocket.DefaultDialer.Dial(uri.String(), nil)
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-
+func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send string) {
 	data := []byte(send)
-	if err := sender.WriteMessage(websocket.BinaryMessage, data); err != nil {
+	if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
 		t.Errorf("%v", err)
 	}
 
-	// sender done
+	// ws done
 	wg.Done()
 
 }
