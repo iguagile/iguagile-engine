@@ -65,6 +65,7 @@ func TestConnection(t *testing.T) {
 	defer func() {
 		_ = wsRec.Close()
 	}()
+
 	wsSend, resp, err := websocket.DefaultDialer.Dial(uri.String(), nil)
 	if err != nil {
 		t.Errorf("%v", err)
@@ -98,9 +99,8 @@ func TestConnection(t *testing.T) {
 
 }
 
-func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string) {
-
-	messageType, p, err := ws.ReadMessage()
+func receiver(receiver *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string) {
+	messageType, p, err := receiver.ReadMessage()
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -129,15 +129,15 @@ func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string)
 
 }
 
-func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send string) {
+func sender(sender *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send string) {
 
-	ws, _, err := websocket.DefaultDialer.Dial(uri.String(), nil)
+	sender, _, err := websocket.DefaultDialer.Dial(uri.String(), nil)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
 	data := []byte(send)
-	if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
+	if err := sender.WriteMessage(websocket.BinaryMessage, data); err != nil {
 		t.Errorf("%v", err)
 	}
 
