@@ -45,6 +45,7 @@ func TestConnection(t *testing.T) {
 		{"00hello1", "hello1"},
 		{"00MSG", "MSG"},
 		{"00HOGE", "HOGE"},
+		//{"00HOGE1", "HOGE"},
 	}
 
 	srv := NewServer(t)
@@ -71,12 +72,12 @@ func receiver(t *testing.T, wg *sync.WaitGroup, want string) {
 	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 
 	if err != nil {
-		t.Fatalf("%v", err)
+		t.Errorf("%v", err)
 	}
 
 	messageType, p, err := ws.ReadMessage()
 	if err != nil {
-		t.Fatalf("%v", err)
+		t.Errorf("%v", err)
 	}
 
 	if messageType != websocket.BinaryMessage {
