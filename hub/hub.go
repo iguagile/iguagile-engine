@@ -5,7 +5,6 @@
 package hub
 
 import (
-	"bytes"
 	"log"
 	"net/http"
 	"os"
@@ -69,7 +68,7 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			notify(h, client, openMessage)
+			//notify(h, client, openMessage)
 			h.clients[client] = true
 			for message := range h.RPCBuffer {
 				client.Send <- *message
@@ -100,13 +99,13 @@ func (h *Hub) Run() {
 
 func notify(h *Hub, c *Client, messageType byte) {
 	for client := range h.clients {
-		message := append(c.ID, messageType)
+		message := append([]byte(c.ID), messageType)
 		client.Send <- message
 	}
 }
 
 func closeConnection(h *Hub, c *Client) {
-	notify(h, c, closeMessage)
+	//notify(h, c, closeMessage)
 	for message := range c.RPCBuffer {
 		delete(h.RPCBuffer, message)
 	}
@@ -128,10 +127,10 @@ const (
 	maxMessageSize = 512
 )
 
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
-)
+//var (
+//	newline = []byte{'\n'}
+//	space   = []byte{' '}
+//)
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -164,7 +163,7 @@ func NewClient(hub *Hub, conn *websocket.Conn) (*Client, error) {
 
 	uid, err := uuid.NewUUID()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	c.ID, err = uid.MarshalBinary()
 
@@ -203,7 +202,7 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		//message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.hub.Receive <- ReceivedData{Sender: c, Message: message}
 	}
 }
@@ -238,6 +237,7 @@ func (c *Client) writePump() {
 
 			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
+				c.hub.log.Println(err)
 				return
 			}
 
@@ -246,6 +246,7 @@ func (c *Client) writePump() {
 			}
 
 			if err := w.Close(); err != nil {
+				c.hub.log.Println(err)
 				return
 			}
 		case <-ticker.C:

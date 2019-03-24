@@ -14,28 +14,31 @@ import (
 
 func TestConnection(t *testing.T) {
 
-	for i := 0; i < 10; i++ {
+	const binaryUUIDLength = 16
+	const messageTypeLength = 1
 
-		srv := &http.Server{
-			Addr: "127.0.0.1:5000",
+	srv := &http.Server{
+		Addr: "127.0.0.1:5000",
+	}
+
+	go func(t *testing.T) {
+
+		h := hub.NewHub()
+		go h.Run()
+		f := func(w http.ResponseWriter, r *http.Request) {
+			hub.ServeWs(h, w, r)
 		}
+		srv.Handler = http.HandlerFunc(f)
 
-		go func(t *testing.T) {
+		if err := srv.ListenAndServe(); err != nil {
+			t.Log(err)
+		}
+	}(t)
 
-			h := hub.NewHub()
-			go h.Run()
-			f := func(w http.ResponseWriter, r *http.Request) {
-				hub.ServeWs(h, w, r)
-			}
-			srv.Handler = http.HandlerFunc(f)
+	time.Sleep(200 * time.Millisecond)
+	fmt.Println("RUN")
 
-			if err := srv.ListenAndServe(); err != nil {
-				t.Log(err)
-			}
-		}(t)
-
-		time.Sleep(200 * time.Millisecond)
-		fmt.Println("RUN")
+	for i := 0; i < 20; i++ {
 		wg := &sync.WaitGroup{}
 		wg.Add(2)
 
@@ -55,22 +58,19 @@ func TestConnection(t *testing.T) {
 
 			if messageType != websocket.BinaryMessage {
 				t.Error("support binary message only")
-				t.FailNow()
 			}
 			t.Log(len(p))
 			t.Logf("%v\n", p)
 			t.Logf("%s\n", p)
 			// remove uuid
-			received := p[16:]
-			//received := p[36:]
+			received := p[binaryUUIDLength:]
 			// remove mesType
-			data := received[1:]
+			data := received[messageTypeLength:]
 
 			if "hello1" != string(data) {
 				t.Error("bad message")
 				t.Errorf("%v\n", data)
 				t.Errorf("%s\n", data)
-				//t.FailNow()
 			}
 			t.Log(string(data))
 
@@ -109,6 +109,7 @@ func TestConnection(t *testing.T) {
 		}(t, wg)
 		wg.Wait()
 		time.Sleep(200 * time.Millisecond)
-		srv.Close()
+
 	}
+	srv.Close()
 }
