@@ -12,11 +12,10 @@ import (
 	"github.com/iguagile/iguagile-engine/hub"
 )
 
-func TestConnection(t *testing.T) {
+const binaryUUIDLength = 16
+const messageTypeLength = 1
 
-	const binaryUUIDLength = 16
-	const messageTypeLength = 1
-
+func NewServer(t *testing.T) *http.Server {
 	srv := &http.Server{
 		Addr: "127.0.0.1:5000",
 	}
@@ -35,81 +34,104 @@ func TestConnection(t *testing.T) {
 		}
 	}(t)
 
+	return srv
+}
+
+func TestConnection(t *testing.T) {
+	testData := []struct {
+		send string
+		want string
+	}{
+		{"00hello1", "hello1"},
+		{"00MSG", "MSG"},
+		{"00HOGE", "HOGE"},
+	}
+
+	srv := NewServer(t)
+
 	time.Sleep(200 * time.Millisecond)
 	fmt.Println("RUN")
 
-	for i := 0; i < 20; i++ {
-		wg := &sync.WaitGroup{}
-		wg.Add(2)
+	for i := 0; i < 3; i++ {
 
-		go func(t *testing.T, wg *sync.WaitGroup) {
-			u := url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
-			ws, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
-
-			if err != nil {
-				t.Logf("handshake failed with status %d", resp.StatusCode)
-				t.Fatalf("%v", err)
-			}
-
-			messageType, p, err := ws.ReadMessage()
-			if err != nil {
-				t.Fatalf("%v", err)
-			}
-
-			if messageType != websocket.BinaryMessage {
-				t.Error("support binary message only")
-			}
-			t.Log(len(p))
-			t.Logf("%v\n", p)
-			t.Logf("%s\n", p)
-			// remove uuid
-			received := p[binaryUUIDLength:]
-			// remove mesType
-			data := received[messageTypeLength:]
-
-			if "hello1" != string(data) {
-				t.Error("bad message")
-				t.Errorf("%v\n", data)
-				t.Errorf("%s\n", data)
-			}
-			t.Log(string(data))
-
-			wg.Done()
+		for _, v := range testData {
+			wg := &sync.WaitGroup{}
+			wg.Add(2)
+			go receiver(t, wg, v.want)
+			go sender(t, wg, v.send)
 			wg.Wait()
-			if err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
-				t.Errorf("%v", err)
-			}
-			time.Sleep(50 * time.Microsecond)
-			_ = ws.Close()
-
-		}(t, wg)
-
-		go func(t *testing.T, wg *sync.WaitGroup) {
-			u := url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
-			ws, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
-			if err != nil {
-				t.Logf("handshake failed with status %d", resp.StatusCode)
-				t.Errorf("%v", err)
-			}
-
-			data := []byte("00hello1")
-			if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
-				t.Errorf("%v", err)
-			}
-			t.Logf("send %v %s\n", data, data)
-
-			wg.Done()
-			wg.Wait()
-			if err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
-				t.Errorf("%v", err)
-			}
-
-			time.Sleep(50 * time.Millisecond)
-			_ = ws.Close()
-		}(t, wg)
-		wg.Wait()
-		time.Sleep(200 * time.Millisecond)
+		}
 
 	}
 	srv.Close()
+}
+
+func receiver(t *testing.T, wg *sync.WaitGroup, want string) {
+	u := url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
+	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	messageType, p, err := ws.ReadMessage()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	if messageType != websocket.BinaryMessage {
+		t.Error("support binary message only")
+	}
+	t.Log(len(p))
+	t.Logf("%v\n", p)
+	t.Logf("%s\n", p)
+	// remove uuid
+	received := p[binaryUUIDLength:]
+	// remove mesType
+	data := received[messageTypeLength:]
+
+	if want != string(data) {
+		t.Error("bad message")
+		t.Errorf("%v\n", data)
+		t.Errorf("%s\n", data)
+	}
+	t.Log(string(data))
+
+	// receiver done
+	wg.Done()
+
+	// wait sender and receivers done
+	wg.Wait()
+	if err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+		t.Errorf("%v", err)
+	}
+	time.Sleep(50 * time.Microsecond)
+	_ = ws.Close()
+}
+
+func sender(t *testing.T, wg *sync.WaitGroup, send string) {
+
+	u := url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
+	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	data := []byte(send)
+	if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
+		t.Errorf("%v", err)
+	}
+
+	// sender done
+	wg.Done()
+
+	// wait sender and receiver done
+	wg.Wait()
+	if err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+		t.Errorf("%v", err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	_ = ws.Close()
+
 }
