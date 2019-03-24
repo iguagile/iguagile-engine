@@ -60,7 +60,7 @@ const (
 // Messagetypes
 const (
 	systemMessage = iota
-	dataMessage
+	dataMessage   = 1
 )
 
 // SubTypes
@@ -85,7 +85,9 @@ func (h *Hub) Run() {
 			}
 		case receivedData := <-h.Receive:
 			target := receivedData.Message[0]
-			message := append(receivedData.Sender.ID, receivedData.Message[1:]...)
+			message := append(append(receivedData.Sender.ID, dataMessage),
+				// split metadata.
+				receivedData.Message[2:]...)
 			for client := range h.clients {
 				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
@@ -105,13 +107,14 @@ func (h *Hub) Run() {
 
 func notify(h *Hub, c *Client, messageType byte, subType byte) {
 	for client := range h.clients {
-		message := append(c.ID, messageType, subType)
+		message := append(append(c.ID, messageType), subType)
 		client.Send <- message
 	}
 }
 
 func closeConnection(h *Hub, c *Client) {
 	notify(h, c, systemMessage, exitConnection)
+	// TODO subType add RPCBuffer.
 	for message := range c.RPCBuffer {
 		delete(h.RPCBuffer, message)
 	}

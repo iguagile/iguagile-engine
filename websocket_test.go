@@ -53,9 +53,9 @@ func TestConnection(t *testing.T) {
 		send string
 		want string
 	}{
-		{"109hello1", "hello1"},
-		{"109MSG", "MSG"},
-		{"109HOGE", "HOGE"},
+		{`110hello1`, "hello1"},
+		{`110MSG`, "MSG"},
+		{`110HOGE`, "HOGE"},
 	}
 
 	srv := NewServer(t)
@@ -101,15 +101,17 @@ func TestConnection(t *testing.T) {
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
 		t.Errorf("%v", err)
 	}
+	time.Sleep(50 * time.Microsecond)
 	if err := wsRec.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
 		t.Errorf("%v", err)
 	}
-	time.Sleep(50 * time.Microsecond)
 
 }
 
 func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string) {
+
+OUTER:
 	for {
 
 		messageType, p, err := ws.ReadMessage()
@@ -126,36 +128,36 @@ func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string)
 		msgType := p[lengthUUID : lengthUUID+lengthMessageType]
 
 		// SKIP SYSTEM MESSAGE
-		if msgType[0] == systemMessage {
-
+		switch msgType[0] {
+		case systemMessage:
+			// perse subtype
 			sub := p[lengthUUID+lengthMessageType : lengthUUID+lengthMessageType+lengthSubType]
+			id, err := uuid.FromBytes(uid[:])
+			if err != nil {
+				log.Fatal(err)
+			}
 			switch sub[0] {
 			case 0:
-
-				id, err := uuid.FromBytes(uid[:])
-				if err != nil {
-					log.Fatal(err)
-				}
 				t.Logf("new client %s", id)
-
+			default:
+				t.Logf("client exit %s", id)
 			}
 
-			continue
-		}
+			continue OUTER
+		case dataMessage:
+			data := p[lengthUUID+lengthMessageType+lengthSubType:]
+			t.Logf("%s\n", data)
+			if want != string(data) {
+				t.Error("miss match message")
+				t.Errorf("%v\n", data)
+				t.Errorf("%s\n", data)
+			}
+			t.Log(string(data))
 
-		// perse subtype
-		data := p[lengthUUID+lengthMessageType+lengthSubType:]
-		t.Logf("%s\n", data)
-		if want != string(data) {
-			t.Error("bad message")
-			t.Errorf("%v\n", data)
-			t.Errorf("%s\n", data)
+			// ws done
+			wg.Done()
+			break OUTER
 		}
-		t.Log(string(data))
-
-		// ws done
-		wg.Done()
-		break
 	}
 }
 
