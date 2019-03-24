@@ -5,7 +5,6 @@
 package hub
 
 import (
-	"bytes"
 	"log"
 	"net/http"
 	"os"
@@ -58,10 +57,16 @@ const (
 	otherClientsBuffered = 3
 )
 
-// Message types
+// Messagetypes
 const (
-	openMessage = iota
-	closeMessage
+	systemMessage = iota
+	dataMessage   = 1
+)
+
+// SubTypes
+const (
+	newConnection = iota
+	exitConnection
 )
 
 // Run is provides backend synchronize goroutine.
@@ -69,7 +74,7 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			notify(h, client, openMessage)
+			notify(h, client, systemMessage, newConnection)
 			h.clients[client] = true
 			for message := range h.RPCBuffer {
 				client.Send <- *message
@@ -80,7 +85,9 @@ func (h *Hub) Run() {
 			}
 		case receivedData := <-h.Receive:
 			target := receivedData.Message[0]
-			message := append(receivedData.Sender.ID, receivedData.Message[1:]...)
+			message := append(append(receivedData.Sender.ID, dataMessage),
+				// split metadata.
+				receivedData.Message[2:]...)
 			for client := range h.clients {
 				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
 					select {
@@ -98,15 +105,16 @@ func (h *Hub) Run() {
 	}
 }
 
-func notify(h *Hub, c *Client, messageType byte) {
+func notify(h *Hub, c *Client, messageType byte, subType byte) {
 	for client := range h.clients {
-		message := append(c.ID, messageType)
+		message := append(c.ID, messageType, subType)
 		client.Send <- message
 	}
 }
 
 func closeConnection(h *Hub, c *Client) {
-	notify(h, c, closeMessage)
+	notify(h, c, systemMessage, exitConnection)
+	// TODO subType add RPCBuffer.
 	for message := range c.RPCBuffer {
 		delete(h.RPCBuffer, message)
 	}
@@ -126,11 +134,6 @@ const (
 
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
-)
-
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
 )
 
 var upgrader = websocket.Upgrader{
@@ -164,7 +167,7 @@ func NewClient(hub *Hub, conn *websocket.Conn) (*Client, error) {
 
 	uid, err := uuid.NewUUID()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	c.ID, err = uid.MarshalBinary()
 
@@ -203,7 +206,7 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+
 		c.hub.Receive <- ReceivedData{Sender: c, Message: message}
 	}
 }
@@ -236,8 +239,9 @@ func (c *Client) writePump() {
 				return
 			}
 
-			w, err := c.conn.NextWriter(websocket.TextMessage)
+			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
+				c.hub.log.Println(err)
 				return
 			}
 
@@ -246,6 +250,7 @@ func (c *Client) writePump() {
 			}
 
 			if err := w.Close(); err != nil {
+				c.hub.log.Println(err)
 				return
 			}
 		case <-ticker.C:
