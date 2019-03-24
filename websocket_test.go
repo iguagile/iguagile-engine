@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -50,12 +51,12 @@ func NewServer(t *testing.T) *http.Server {
 
 func TestConnection(t *testing.T) {
 	testData := []struct {
-		send string
-		want string
+		send []byte
+		want []byte
 	}{
-		{`110hello1`, "hello1"},
-		{`110MSG`, "MSG"},
-		{`110HOGE`, "HOGE"},
+		{append([]byte{1, 1, 0}, []byte("hello")...), []byte("hello")},
+		{append([]byte{1, 1, 0}, []byte("MSG")...), []byte("MSG")},
+		{append([]byte{1, 1, 0}, []byte("HOGE")...), []byte("HOGE")},
 	}
 
 	srv := NewServer(t)
@@ -109,7 +110,7 @@ func TestConnection(t *testing.T) {
 
 }
 
-func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want string) {
+func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want []byte) {
 
 OUTER:
 	for {
@@ -147,7 +148,7 @@ OUTER:
 		case dataMessage:
 			data := p[lengthUUID+lengthMessageType+lengthSubType:]
 			t.Logf("%s\n", data)
-			if want != string(data) {
+			if !reflect.DeepEqual(want, data) {
 				t.Error("miss match message")
 				t.Errorf("%v\n", data)
 				t.Errorf("%s\n", data)
@@ -161,9 +162,8 @@ OUTER:
 	}
 }
 
-func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send string) {
-	data := []byte(send)
-	if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
+func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
+	if err := ws.WriteMessage(websocket.BinaryMessage, send); err != nil {
 		t.Errorf("%v", err)
 	}
 
