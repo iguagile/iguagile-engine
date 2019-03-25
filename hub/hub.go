@@ -86,13 +86,12 @@ func (h *Hub) Run() {
 				closeConnection(h, client)
 			}
 		case receivedData := <-h.Receive:
-			rowData, err := data.NewBinaryData(receivedData.Message)
+			rowData, err := data.NewBinaryData(receivedData.Message, data.Inbound)
 			if err != nil {
 				log.Println(err)
-
 			}
 
-			message := append(append(rowData.UUID, dataMessage), rowData.Payload...)
+			message := append(append(receivedData.Sender.ID, dataMessage), rowData.Payload...)
 			for client := range h.clients {
 				if client != receivedData.Sender || rowData.Target == allClients || rowData.Target == allClientsBuffered {
 					select {

@@ -17,12 +17,6 @@ import (
 	"github.com/iguagile/iguagile-engine/hub"
 )
 
-// Message types
-const (
-	systemMessage = iota
-	dataMessage
-)
-
 var uri = url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
 
 func NewServer(t *testing.T) *http.Server {
@@ -122,10 +116,9 @@ OUTER:
 			t.Error("support binary message only")
 		}
 
-		bin, err := data.NewBinaryData(p)
+		bin, err := data.NewBinaryData(p, data.Outbound)
 		if err != nil {
 			t.Error(err)
-
 		}
 
 		// SKIP SYSTEM MESSAGE
@@ -156,8 +149,13 @@ OUTER:
 			// ws done
 			wg.Done()
 			break OUTER
+
+		default:
+			t.Log(bin.MessageType)
 		}
+
 	}
+
 }
 
 func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
