@@ -10,6 +10,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/iguagile/iguagile-engine/data"
+
 	"github.com/google/uuid"
 
 	"github.com/gorilla/websocket"
@@ -84,12 +86,15 @@ func (h *Hub) Run() {
 				closeConnection(h, client)
 			}
 		case receivedData := <-h.Receive:
-			target := receivedData.Message[0]
-			message := append(append(receivedData.Sender.ID, dataMessage),
-				// split metadata.
-				receivedData.Message[2:]...)
+			rowData, err := data.NewBinaryData(receivedData.Message)
+			if err != nil {
+				log.Println(err)
+
+			}
+
+			message := append(append(rowData.UUID, dataMessage), rowData.Payload...)
 			for client := range h.clients {
-				if client != receivedData.Sender || target == allClients || target == allClientsBuffered {
+				if client != receivedData.Sender || rowData.Target == allClients || rowData.Target == allClientsBuffered {
 					select {
 					case client.Send <- message:
 					default:
@@ -97,7 +102,7 @@ func (h *Hub) Run() {
 					}
 				}
 			}
-			if target == allClientsBuffered || target == otherClientsBuffered {
+			if rowData.Target == allClientsBuffered || rowData.Target == otherClientsBuffered {
 				receivedData.Sender.RPCBuffer[&message] = true
 				h.RPCBuffer[&message] = true
 			}

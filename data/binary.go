@@ -14,6 +14,12 @@ const (
 	UserData
 )
 
+// Traffic
+const (
+	Input = iota
+	Output
+)
+
 // BinaryData is client and server data transfer format.
 type BinaryData struct {
 	UUID        []byte
