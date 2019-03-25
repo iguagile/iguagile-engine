@@ -17,6 +17,7 @@ const (
 // BinaryData is client and server data transfer format.
 type BinaryData struct {
 	UUID        []byte
+	Target      byte
 	MessageType byte
 	SubType     byte
 	Payload     []byte
