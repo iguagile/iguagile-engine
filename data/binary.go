@@ -14,8 +14,7 @@ const (
 	dataMessage
 )
 
-// ReceivedData is Client side transfer data struct.
-
+// BinaryData is client and server data transfer format.
 type BinaryData struct {
 	UUID        []byte
 	MessageType byte
@@ -23,6 +22,7 @@ type BinaryData struct {
 	Payload     []byte
 }
 
+// NewBinaryData return a BinaryData struct parsed and formatted binary.
 func NewBinaryData(b []byte) (BinaryData, error) {
 	p := BinaryData{}
 
