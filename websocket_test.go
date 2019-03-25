@@ -130,7 +130,7 @@ OUTER:
 
 		// SKIP SYSTEM MESSAGE
 		switch bin.MessageType {
-		case systemMessage:
+		case data.SystemMessage:
 			// perse subtype
 			id, err := uuid.FromBytes(bin.UUID)
 			if err != nil {
@@ -144,7 +144,7 @@ OUTER:
 			}
 
 			continue OUTER
-		case dataMessage:
+		case data.UserData:
 			t.Logf("%s\n", bin.Payload)
 			if !reflect.DeepEqual(want, bin.Payload) {
 				t.Error("miss match message")
