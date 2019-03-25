@@ -9,15 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iguagile/iguagile-engine/data"
+
 	"github.com/google/uuid"
 
 	"github.com/gorilla/websocket"
 	"github.com/iguagile/iguagile-engine/hub"
 )
-
-const lengthUUID = 16
-const lengthMessageType = 1
-const lengthSubType = 1
 
 // Message types
 const (
@@ -124,20 +122,21 @@ OUTER:
 			t.Error("support binary message only")
 		}
 
-		uid := p[:lengthUUID]
+		bin, err := data.NewBinaryData(p)
+		if err != nil {
+			t.Error(err)
 
-		msgType := p[lengthUUID : lengthUUID+lengthMessageType]
+		}
 
 		// SKIP SYSTEM MESSAGE
-		switch msgType[0] {
+		switch bin.MessageType {
 		case systemMessage:
 			// perse subtype
-			sub := p[lengthUUID+lengthMessageType : lengthUUID+lengthMessageType+lengthSubType]
-			id, err := uuid.FromBytes(uid[:])
+			id, err := uuid.FromBytes(bin.UUID)
 			if err != nil {
 				log.Fatal(err)
 			}
-			switch sub[0] {
+			switch bin.SubType {
 			case 0:
 				t.Logf("new client %s", id)
 			default:
@@ -146,14 +145,13 @@ OUTER:
 
 			continue OUTER
 		case dataMessage:
-			data := p[lengthUUID+lengthMessageType+lengthSubType:]
-			t.Logf("%s\n", data)
-			if !reflect.DeepEqual(want, data) {
+			t.Logf("%s\n", bin.Payload)
+			if !reflect.DeepEqual(want, bin.Payload) {
 				t.Error("miss match message")
-				t.Errorf("%v\n", data)
-				t.Errorf("%s\n", data)
+				t.Errorf("%v\n", bin.Payload)
+				t.Errorf("%s\n", bin.Payload)
 			}
-			t.Log(string(data))
+			t.Log(string(bin.Payload))
 
 			// ws done
 			wg.Done()
