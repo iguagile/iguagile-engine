@@ -1,9 +1,5 @@
 package data
 
-import (
-	"fmt"
-)
-
 const lengthUUID = 16
 const lengthMessageType = 1
 const lengthSubType = 1
@@ -34,41 +30,19 @@ type BinaryData struct {
 // NewBinaryData return a BinaryData struct parsed and formatted binary.
 func NewBinaryData(b []byte, t int) (BinaryData, error) {
 	p := BinaryData{}
-	if t == Inbound {
-		p.Target = b[:lengthTarget][0]
-		p.MessageType = b[lengthTarget : lengthTarget+lengthMessageType][0]
+
+	switch t {
+	case Inbound: // ref https://github.com/iguagile/iguagile-engine/wiki/protocol#inbound
+		p.Target = b[0:1][0]
+		p.MessageType = b[1:2][0]
+		p.SubType = b[2:3][0]
+		p.Payload = b[2:]
+	case Outbound: // ref: https://github.com/iguagile/iguagile-engine/wiki/protocol#outbound
+		p.UUID = b[:16]
+		p.MessageType = b[16:17][0]
+		p.SubType = b[16:17][0]
+		p.Payload = b[18:]
 	}
-	if t == Outbound {
-		p.UUID = b[:lengthUUID]
-		p.MessageType = b[lengthUUID : lengthUUID+lengthMessageType][0]
-	}
 
-	switch p.MessageType {
-	case SystemMessage:
-		leng := 0
-		if t == Outbound {
-			leng += lengthUUID
-		} else {
-			leng += lengthTarget
-		}
-		leng += lengthMessageType
-		sub := b[leng : leng+lengthSubType]
-		p.SubType = sub[0]
-		return p, nil
-
-	case UserData:
-		leng := 0
-		if t == Outbound {
-			leng += lengthUUID
-		} else {
-			leng += lengthTarget
-		}
-		leng += lengthMessageType + lengthSubType
-		p.Payload = b[leng:]
-		return p, nil
-
-	default:
-
-		return p, fmt.Errorf("unknown MessageType %v", p.MessageType)
-	}
+	return p, nil
 }
