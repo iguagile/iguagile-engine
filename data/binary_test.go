@@ -1,0 +1,116 @@
+package data
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/google/uuid"
+)
+
+func TestInbound(t *testing.T) {
+	testData := []struct {
+		send []byte
+		want BinaryData
+	}{
+		{append([]byte{1, 1, 0}, []byte("hello")...),
+			BinaryData{
+				Traffic:     Inbound,
+				Target:      byte(1),
+				MessageType: byte(1),
+				SubType:     byte(0),
+				Payload:     []byte("hello")},
+		},
+		{append([]byte{1, 1, 0}, []byte("MSG")...), BinaryData{
+			Traffic:     Inbound,
+			Target:      byte(1),
+			MessageType: byte(1),
+			SubType:     byte(0),
+			Payload:     []byte("MSG")},
+		},
+		{append([]byte{1, 1, 0}, []byte("HOGE")...), BinaryData{
+			Traffic:     Inbound,
+			Target:      byte(1),
+			MessageType: byte(1),
+			SubType:     byte(0),
+			Payload:     []byte("HOGE")},
+		},
+	}
+	for _, v := range testData {
+		d, err := NewBinaryData(v.send, Inbound)
+		if err != nil {
+			t.Error(err)
+		}
+		if !reflect.DeepEqual(d.Payload, v.want.Payload) {
+			t.Errorf("missmatch Payload %v and %v", d.Payload, v.want.Payload)
+		}
+		if !reflect.DeepEqual(d.MessageType, v.want.MessageType) {
+			t.Errorf("missmatch MessageType %v and %v", d.Payload, v.want.Payload)
+		}
+		if !reflect.DeepEqual(d.SubType, v.want.SubType) {
+			t.Errorf("missmatch SubType %v and %v", d.SubType, v.want.SubType)
+		}
+		if !reflect.DeepEqual(d.Target, v.want.Target) {
+			t.Errorf("missmatch Target %v and %v", d.Target, v.want.Target)
+		}
+		if !reflect.DeepEqual(d.Traffic, v.want.Traffic) {
+			t.Errorf("missmatch Traffic %v and %v", d.Traffic, v.want.Traffic)
+		}
+	}
+}
+
+func TestOutbound(t *testing.T) {
+	tUUID, err := uuid.MustParse("dabc30c6-440d-43ee-86a6-7c7e374fdd19").MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testData := []struct {
+		send []byte
+		want BinaryData
+	}{
+		{append(tUUID, append([]byte{1, 0}, []byte("hello")...)...),
+			BinaryData{
+				Traffic:     Outbound,
+				UUID:        tUUID,
+				MessageType: byte(1),
+				SubType:     byte(0),
+				Payload:     []byte("hello")},
+		},
+		{append(tUUID, append([]byte{1, 0}, []byte("MSG")...)...), BinaryData{
+			Traffic:     Outbound,
+			UUID:        tUUID,
+			MessageType: byte(1),
+			SubType:     byte(0),
+			Payload:     []byte("MSG")},
+		},
+		{append(tUUID, append([]byte{1, 1}, []byte("HOGE")...)...), BinaryData{
+			Traffic:     Outbound,
+			UUID:        tUUID,
+			MessageType: byte(1),
+			SubType:     byte(1),
+			Payload:     []byte("HOGE")},
+		},
+	}
+	for _, v := range testData {
+		d, err := NewBinaryData(v.send, Outbound)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if !reflect.DeepEqual(d.Payload, v.want.Payload) {
+			t.Errorf("missmatch Payload %v and %v", d.Payload, v.want.Payload)
+		}
+		if !reflect.DeepEqual(d.MessageType, v.want.MessageType) {
+			t.Errorf("missmatch MessageType %v and %v", d.Payload, v.want.Payload)
+		}
+		if !reflect.DeepEqual(d.SubType, v.want.SubType) {
+			t.Errorf("missmatch SubType %v and %v", d.SubType, v.want.SubType)
+		}
+		if !reflect.DeepEqual(d.UUID, v.want.UUID) {
+			t.Errorf("missmatch UUID %v and %v", d.Target, v.want.Target)
+		}
+		if !reflect.DeepEqual(d.Traffic, v.want.Traffic) {
+			t.Errorf("missmatch Traffic %v and %v", d.Traffic, v.want.Traffic)
+		}
+	}
+}

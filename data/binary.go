@@ -28,14 +28,16 @@ func NewBinaryData(b []byte, t int) (BinaryData, error) {
 
 	switch t {
 	case Inbound: // ref https://github.com/iguagile/iguagile-engine/wiki/protocol#inbound
+		p.Traffic = t
 		p.Target = b[0:1][0]
 		p.MessageType = b[1:2][0]
 		p.SubType = b[2:3][0]
-		p.Payload = b[2:]
+		p.Payload = b[3:]
 	case Outbound: // ref: https://github.com/iguagile/iguagile-engine/wiki/protocol#outbound
+		p.Traffic = t
 		p.UUID = b[:16]
 		p.MessageType = b[16:17][0]
-		p.SubType = b[16:17][0]
+		p.SubType = b[17:18][0]
 		p.Payload = b[18:]
 	}
 
