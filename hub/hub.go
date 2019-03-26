@@ -67,7 +67,8 @@ const (
 
 // SubTypes
 const (
-	newConnection = iota
+	none = iota
+	newConnection
 	exitConnection
 )
 
@@ -91,7 +92,7 @@ func (h *Hub) Run() {
 				log.Println(err)
 			}
 
-			message := append(append(receivedData.Sender.ID, dataMessage), rowData.Payload...)
+			message := append(append(receivedData.Sender.ID, dataMessage, none), rowData.Payload...)
 			for client := range h.clients {
 				if client != receivedData.Sender || rowData.Target == allClients || rowData.Target == allClientsBuffered {
 					select {
