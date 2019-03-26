@@ -41,19 +41,19 @@ func TestInbound(t *testing.T) {
 			t.Error(err)
 		}
 		if !reflect.DeepEqual(d.Payload, v.want.Payload) {
-			t.Errorf("missmatch Payload %v and %v", d.Payload, v.want.Payload)
+			t.Errorf("missmatch Payload get: %v , want: %v", d.Payload, v.want.Payload)
 		}
 		if !reflect.DeepEqual(d.MessageType, v.want.MessageType) {
-			t.Errorf("missmatch MessageType %v and %v", d.Payload, v.want.Payload)
+			t.Errorf("missmatch MessageType get: %v , want: %v", d.Payload, v.want.Payload)
 		}
 		if !reflect.DeepEqual(d.SubType, v.want.SubType) {
-			t.Errorf("missmatch SubType %v and %v", d.SubType, v.want.SubType)
+			t.Errorf("missmatch SubType get: %v , want: %v", d.SubType, v.want.SubType)
 		}
 		if !reflect.DeepEqual(d.Target, v.want.Target) {
-			t.Errorf("missmatch Target %v and %v", d.Target, v.want.Target)
+			t.Errorf("missmatch Target get: %v , want: %v", d.Target, v.want.Target)
 		}
 		if !reflect.DeepEqual(d.Traffic, v.want.Traffic) {
-			t.Errorf("missmatch Traffic %v and %v", d.Traffic, v.want.Traffic)
+			t.Errorf("missmatch Traffic get: %v , want: %v", d.Traffic, v.want.Traffic)
 		}
 	}
 }
@@ -98,19 +98,19 @@ func TestOutbound(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(d.Payload, v.want.Payload) {
-			t.Errorf("missmatch Payload %v and %v", d.Payload, v.want.Payload)
+			t.Errorf("missmatch Payload get: %v , want: %v", d.Payload, v.want.Payload)
 		}
 		if !reflect.DeepEqual(d.MessageType, v.want.MessageType) {
-			t.Errorf("missmatch MessageType %v and %v", d.Payload, v.want.Payload)
+			t.Errorf("missmatch MessageType get: %v , want: %v", d.Payload, v.want.Payload)
 		}
 		if !reflect.DeepEqual(d.SubType, v.want.SubType) {
-			t.Errorf("missmatch SubType %v and %v", d.SubType, v.want.SubType)
+			t.Errorf("missmatch SubType get: %v , want: %v", d.SubType, v.want.SubType)
 		}
 		if !reflect.DeepEqual(d.UUID, v.want.UUID) {
-			t.Errorf("missmatch UUID %v and %v", d.Target, v.want.Target)
+			t.Errorf("missmatch UUID get: %v , want: %v", d.Target, v.want.Target)
 		}
 		if !reflect.DeepEqual(d.Traffic, v.want.Traffic) {
-			t.Errorf("missmatch Traffic %v and %v", d.Traffic, v.want.Traffic)
+			t.Errorf("missmatch Traffic get: %v , want: %v", d.Traffic, v.want.Traffic)
 		}
 	}
 }
