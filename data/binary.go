@@ -1,10 +1,5 @@
 package data
 
-const lengthUUID = 16
-const lengthMessageType = 1
-const lengthSubType = 1
-const lengthTarget = 1
-
 // Message types
 const (
 	SystemMessage = iota
