@@ -130,9 +130,9 @@ OUTER:
 				log.Fatal(err)
 			}
 			switch bin.SubType {
-			case 0:
+			case 1:
 				t.Logf("new client %s", id)
-			default:
+			case 2:
 				t.Logf("client exit %s", id)
 			}
 
