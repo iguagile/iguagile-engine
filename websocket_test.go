@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -123,10 +122,9 @@ OUTER:
 
 		switch bin.MessageType {
 		case data.SystemMessage:
-			// perse subtype
 			id, err := uuid.FromBytes(bin.UUID)
 			if err != nil {
-				log.Fatal(err)
+				t.Error(err)
 			}
 			switch bin.SubType {
 			case data.NewConnect:
@@ -145,7 +143,6 @@ OUTER:
 			}
 			t.Log(string(bin.Payload))
 
-			// ws done
 			wg.Done()
 			break OUTER
 
@@ -162,7 +159,5 @@ func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
 		t.Errorf("%v", err)
 	}
 
-	// ws done
 	wg.Done()
-
 }
