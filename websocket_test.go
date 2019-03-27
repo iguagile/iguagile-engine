@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -9,20 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iguagile/iguagile-engine/data"
+
 	"github.com/google/uuid"
 
 	"github.com/gorilla/websocket"
 	"github.com/iguagile/iguagile-engine/hub"
-)
-
-const lengthUUID = 16
-const lengthMessageType = 1
-const lengthSubType = 1
-
-// Message types
-const (
-	systemMessage = iota
-	dataMessage
 )
 
 var uri = url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
@@ -124,42 +115,43 @@ OUTER:
 			t.Error("support binary message only")
 		}
 
-		uid := p[:lengthUUID]
+		bin, err := data.NewBinaryData(p, data.Outbound)
+		if err != nil {
+			t.Error(err)
+		}
 
-		msgType := p[lengthUUID : lengthUUID+lengthMessageType]
-
-		// SKIP SYSTEM MESSAGE
-		switch msgType[0] {
-		case systemMessage:
-			// perse subtype
-			sub := p[lengthUUID+lengthMessageType : lengthUUID+lengthMessageType+lengthSubType]
-			id, err := uuid.FromBytes(uid[:])
+		switch bin.MessageType {
+		case data.SystemMessage:
+			id, err := uuid.FromBytes(bin.UUID)
 			if err != nil {
-				log.Fatal(err)
+				t.Error(err)
 			}
-			switch sub[0] {
-			case 0:
+			switch bin.SubType {
+			case data.NewConnect:
 				t.Logf("new client %s", id)
-			default:
+			case data.ExitConnect:
 				t.Logf("client exit %s", id)
 			}
 
 			continue OUTER
-		case dataMessage:
-			data := p[lengthUUID+lengthMessageType+lengthSubType:]
-			t.Logf("%s\n", data)
-			if !reflect.DeepEqual(want, data) {
+		case data.UserData:
+			t.Logf("%s\n", bin.Payload)
+			if !reflect.DeepEqual(want, bin.Payload) {
 				t.Error("miss match message")
-				t.Errorf("%v\n", data)
-				t.Errorf("%s\n", data)
+				t.Errorf("%v\n", bin.Payload)
+				t.Errorf("%s\n", bin.Payload)
 			}
-			t.Log(string(data))
+			t.Log(string(bin.Payload))
 
-			// ws done
 			wg.Done()
 			break OUTER
+
+		default:
+			t.Log(bin.MessageType)
 		}
+
 	}
+
 }
 
 func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
@@ -167,7 +159,5 @@ func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
 		t.Errorf("%v", err)
 	}
 
-	// ws done
 	wg.Done()
-
 }
