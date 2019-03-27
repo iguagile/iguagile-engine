@@ -12,6 +12,13 @@ const (
 	Outbound
 )
 
+// SubType
+const (
+	NoneSubtype = iota // zero padding
+	NewConnect
+	ExitConnect
+)
+
 // BinaryData is client and server data transfer format.
 type BinaryData struct {
 	Traffic     int

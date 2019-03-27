@@ -121,7 +121,6 @@ OUTER:
 			t.Error(err)
 		}
 
-		// SKIP SYSTEM MESSAGE
 		switch bin.MessageType {
 		case data.SystemMessage:
 			// perse subtype
@@ -130,9 +129,9 @@ OUTER:
 				log.Fatal(err)
 			}
 			switch bin.SubType {
-			case 1:
+			case data.NewConnect:
 				t.Logf("new client %s", id)
-			case 2:
+			case data.ExitConnect:
 				t.Logf("client exit %s", id)
 			}
 
