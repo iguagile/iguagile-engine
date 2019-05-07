@@ -45,9 +45,9 @@ func TestConnection(t *testing.T) {
 		send []byte
 		want []byte
 	}{
-		{append([]byte{1, 1, 0}, []byte("hello")...), []byte("hello")},
-		{append([]byte{1, 1, 0}, []byte("MSG")...), []byte("MSG")},
-		{append([]byte{1, 1, 0}, []byte("HOGE")...), []byte("HOGE")},
+		{append([]byte{1, 2}, []byte("hello")...), []byte("hello")},
+		{append([]byte{1, 3}, []byte("MSG")...), []byte("MSG")},
+		{append([]byte{1, 4}, []byte("HOGE")...), []byte("HOGE")},
 	}
 
 	srv := NewServer(t)
