@@ -53,22 +53,15 @@ func NewHub() *Hub {
 
 // RPC Targets
 const (
-	allClients = 0
-	//otherClients         = 1
-	allClientsBuffered   = 2
-	otherClientsBuffered = 3
+	allClients = iota
+	otherClients
+	allClientsBuffered
+	otherClientsBuffered
 )
 
 // Messagetypes
 const (
-	systemMessage = iota
-	dataMessage   = 1
-)
-
-// SubTypes
-const (
-	none = iota
-	newConnection
+	newConnection = iota
 	exitConnection
 )
 
@@ -77,7 +70,7 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			notify(h, client, systemMessage, newConnection)
+			notify(h, client, newConnection)
 			h.clients[client] = true
 			for message := range h.RPCBuffer {
 				client.Send <- *message
@@ -92,17 +85,18 @@ func (h *Hub) Run() {
 				log.Println(err)
 			}
 
-			message := append(append(receivedData.Sender.ID, dataMessage, none), rowData.Payload...)
-			for client := range h.clients {
-				if client != receivedData.Sender || rowData.Target == allClients || rowData.Target == allClientsBuffered {
-					select {
-					case client.Send <- message:
-					default:
-						closeConnection(h, client)
-					}
-				}
-			}
-			if rowData.Target == allClientsBuffered || rowData.Target == otherClientsBuffered {
+			message := append(append(receivedData.Sender.ID, rowData.MessageType), rowData.Payload...)
+			switch rowData.Target {
+			case otherClients:
+				sendToOtherClients(h, message, receivedData.Sender)
+			case allClients:
+				sendToAllClients(h, message)
+			case otherClientsBuffered:
+				sendToOtherClients(h, message, receivedData.Sender)
+				receivedData.Sender.RPCBuffer[&message] = true
+				h.RPCBuffer[&message] = true
+			case allClientsBuffered:
+				sendToAllClients(h, message)
 				receivedData.Sender.RPCBuffer[&message] = true
 				h.RPCBuffer[&message] = true
 			}
@@ -110,15 +104,37 @@ func (h *Hub) Run() {
 	}
 }
 
-func notify(h *Hub, c *Client, messageType byte, subType byte) {
+func sendToAllClients(h *Hub, message []byte) {
 	for client := range h.clients {
-		message := append(c.ID, messageType, subType)
+		select {
+		case client.Send <- message:
+		default:
+			closeConnection(h, client)
+		}
+	}
+}
+
+func sendToOtherClients(h *Hub, message []byte, sender *Client) {
+	for client := range h.clients {
+		if client != sender {
+			select {
+			case client.Send <- message:
+			default:
+				closeConnection(h, client)
+			}
+		}
+	}
+}
+
+func notify(h *Hub, c *Client, messageType byte) {
+	for client := range h.clients {
+		message := append(c.ID, messageType)
 		client.Send <- message
 	}
 }
 
 func closeConnection(h *Hub, c *Client) {
-	notify(h, c, systemMessage, exitConnection)
+	notify(h, c, exitConnection)
 	// TODO subType add RPCBuffer.
 	for message := range c.RPCBuffer {
 		delete(h.RPCBuffer, message)

@@ -16,22 +16,19 @@ func TestInbound(t *testing.T) {
 			BinaryData{
 				Traffic:     Inbound,
 				Target:      byte(1),
-				MessageType: byte(UserData),
-				SubType:     byte(NoneSubtype),
+				MessageType: byte(2),
 				Payload:     []byte("hello")},
 		},
 		{append([]byte{1, 1, 0}, []byte("MSG")...), BinaryData{
 			Traffic:     Inbound,
 			Target:      byte(1),
-			MessageType: byte(UserData),
-			SubType:     byte(NoneSubtype),
+			MessageType: byte(3),
 			Payload:     []byte("MSG")},
 		},
 		{append([]byte{1, 1, 0}, []byte("HOGE")...), BinaryData{
 			Traffic:     Inbound,
 			Target:      byte(1),
-			MessageType: byte(UserData),
-			SubType:     byte(NoneSubtype),
+			MessageType: byte(2),
 			Payload:     []byte("HOGE")},
 		},
 	}
@@ -45,9 +42,6 @@ func TestInbound(t *testing.T) {
 		}
 		if !reflect.DeepEqual(d.MessageType, v.want.MessageType) {
 			t.Errorf("missmatch MessageType get: %v , want: %v", d.Payload, v.want.Payload)
-		}
-		if !reflect.DeepEqual(d.SubType, v.want.SubType) {
-			t.Errorf("missmatch SubType get: %v , want: %v", d.SubType, v.want.SubType)
 		}
 		if !reflect.DeepEqual(d.Target, v.want.Target) {
 			t.Errorf("missmatch Target get: %v , want: %v", d.Target, v.want.Target)
@@ -72,22 +66,19 @@ func TestOutbound(t *testing.T) {
 			BinaryData{
 				Traffic:     Outbound,
 				UUID:        tUUID,
-				MessageType: byte(UserData),
-				SubType:     byte(NoneSubtype),
+				MessageType: byte(0),
 				Payload:     []byte("hello")},
 		},
 		{append(tUUID, append([]byte{1, 0}, []byte("MSG")...)...), BinaryData{
 			Traffic:     Outbound,
 			UUID:        tUUID,
-			MessageType: byte(UserData),
-			SubType:     byte(NoneSubtype),
+			MessageType: byte(NewConnect),
 			Payload:     []byte("MSG")},
 		},
 		{append(tUUID, append([]byte{1, 1}, []byte("HOGE")...)...), BinaryData{
 			Traffic:     Outbound,
 			UUID:        tUUID,
-			MessageType: byte(UserData),
-			SubType:     byte(NewConnect),
+			MessageType: byte(ExitConnect),
 			Payload:     []byte("HOGE")},
 		},
 	}
@@ -102,9 +93,6 @@ func TestOutbound(t *testing.T) {
 		}
 		if !reflect.DeepEqual(d.MessageType, v.want.MessageType) {
 			t.Errorf("missmatch MessageType get: %v , want: %v", d.Payload, v.want.Payload)
-		}
-		if !reflect.DeepEqual(d.SubType, v.want.SubType) {
-			t.Errorf("missmatch SubType get: %v , want: %v", d.SubType, v.want.SubType)
 		}
 		if !reflect.DeepEqual(d.UUID, v.want.UUID) {
 			t.Errorf("missmatch UUID get: %v , want: %v", d.Target, v.want.Target)

@@ -1,21 +1,14 @@
 package data
 
-// Message types
-const (
-	SystemMessage = iota
-	UserData
-)
-
 // Traffic
 const (
 	Inbound = iota
 	Outbound
 )
 
-// SubType
+// Message types
 const (
-	NoneSubtype = iota // zero padding
-	NewConnect
+	NewConnect = iota
 	ExitConnect
 )
 
@@ -25,7 +18,6 @@ type BinaryData struct {
 	UUID        []byte
 	Target      byte
 	MessageType byte
-	SubType     byte
 	Payload     []byte
 }
 
@@ -38,14 +30,12 @@ func NewBinaryData(b []byte, t int) (BinaryData, error) {
 		p.Traffic = t
 		p.Target = b[0:1][0]
 		p.MessageType = b[1:2][0]
-		p.SubType = b[2:3][0]
-		p.Payload = b[3:]
+		p.Payload = b[2:]
 	case Outbound: // ref: https://github.com/iguagile/iguagile-engine/wiki/protocol#outbound
 		p.Traffic = t
 		p.UUID = b[:16]
 		p.MessageType = b[16:17][0]
-		p.SubType = b[17:18][0]
-		p.Payload = b[18:]
+		p.Payload = b[17:]
 	}
 
 	return p, nil
