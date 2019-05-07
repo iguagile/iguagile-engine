@@ -12,23 +12,23 @@ func TestInbound(t *testing.T) {
 		send []byte
 		want BinaryData
 	}{
-		{append([]byte{1, 1, 0}, []byte("hello")...),
+		{append([]byte{1, 2}, []byte("hello")...),
 			BinaryData{
 				Traffic:     Inbound,
 				Target:      byte(1),
 				MessageType: byte(2),
 				Payload:     []byte("hello")},
 		},
-		{append([]byte{1, 1, 0}, []byte("MSG")...), BinaryData{
+		{append([]byte{1, 3}, []byte("MSG")...), BinaryData{
 			Traffic:     Inbound,
 			Target:      byte(1),
 			MessageType: byte(3),
 			Payload:     []byte("MSG")},
 		},
-		{append([]byte{1, 1, 0}, []byte("HOGE")...), BinaryData{
+		{append([]byte{1, 4}, []byte("HOGE")...), BinaryData{
 			Traffic:     Inbound,
 			Target:      byte(1),
-			MessageType: byte(2),
+			MessageType: byte(4),
 			Payload:     []byte("HOGE")},
 		},
 	}
@@ -62,20 +62,20 @@ func TestOutbound(t *testing.T) {
 		send []byte
 		want BinaryData
 	}{
-		{append(tUUID, append([]byte{1, 0}, []byte("hello")...)...),
+		{append(tUUID, append([]byte{2}, []byte("hello")...)...),
 			BinaryData{
 				Traffic:     Outbound,
 				UUID:        tUUID,
-				MessageType: byte(0),
+				MessageType: byte(2),
 				Payload:     []byte("hello")},
 		},
-		{append(tUUID, append([]byte{1, 0}, []byte("MSG")...)...), BinaryData{
+		{append(tUUID, append([]byte{NewConnect}, []byte("MSG")...)...), BinaryData{
 			Traffic:     Outbound,
 			UUID:        tUUID,
 			MessageType: byte(NewConnect),
 			Payload:     []byte("MSG")},
 		},
-		{append(tUUID, append([]byte{1, 1}, []byte("HOGE")...)...), BinaryData{
+		{append(tUUID, append([]byte{ExitConnect}, []byte("HOGE")...)...), BinaryData{
 			Traffic:     Outbound,
 			UUID:        tUUID,
 			MessageType: byte(ExitConnect),
