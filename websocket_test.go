@@ -121,20 +121,21 @@ OUTER:
 		}
 
 		switch bin.MessageType {
-		case data.SystemMessage:
+		case data.NewConnect:
 			id, err := uuid.FromBytes(bin.UUID)
 			if err != nil {
 				t.Error(err)
 			}
-			switch bin.SubType {
-			case data.NewConnect:
-				t.Logf("new client %s", id)
-			case data.ExitConnect:
-				t.Logf("client exit %s", id)
-			}
-
+			t.Logf("new client %s", id)
 			continue OUTER
-		case data.UserData:
+		case data.ExitConnect:
+			id, err := uuid.FromBytes(bin.UUID)
+			if err != nil {
+				t.Error(err)
+			}
+			t.Logf("client exit %s", id)
+			continue OUTER
+		default:
 			t.Logf("%s\n", bin.Payload)
 			if !reflect.DeepEqual(want, bin.Payload) {
 				t.Error("miss match message")
@@ -145,9 +146,7 @@ OUTER:
 
 			wg.Done()
 			break OUTER
-
-		default:
-			t.Log(bin.MessageType)
+			
 		}
 
 	}
