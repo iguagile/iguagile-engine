@@ -59,7 +59,7 @@ const (
 	otherClientsBuffered
 )
 
-// Messagetypes
+// Message type
 const (
 	newConnection = iota
 	exitConnection
@@ -85,23 +85,27 @@ func (h *Hub) Run() {
 				log.Println(err)
 			}
 
-			message := append(append(receivedData.Sender.ID, rowData.MessageType), rowData.Payload...)
+			sender := receivedData.Sender
+			message := append(append(sender.ID, rowData.MessageType), rowData.Payload...)
 			switch rowData.Target {
 			case otherClients:
-				sendToOtherClients(h, message, receivedData.Sender)
+				sendToOtherClients(h, message, sender)
 			case allClients:
 				sendToAllClients(h, message)
 			case otherClientsBuffered:
-				sendToOtherClients(h, message, receivedData.Sender)
-				receivedData.Sender.RPCBuffer[&message] = true
-				h.RPCBuffer[&message] = true
+				sendToOtherClients(h, message, sender)
+				addBuffer(h, sender, &message)
 			case allClientsBuffered:
 				sendToAllClients(h, message)
-				receivedData.Sender.RPCBuffer[&message] = true
-				h.RPCBuffer[&message] = true
+				addBuffer(h, sender, &message)
 			}
 		}
 	}
+}
+
+func addBuffer(h *Hub, c *Client, message *[]byte)  {
+	c.RPCBuffer[message] = true
+	h.RPCBuffer[message] = true
 }
 
 func sendToAllClients(h *Hub, message []byte) {
@@ -127,10 +131,9 @@ func sendToOtherClients(h *Hub, message []byte, sender *Client) {
 }
 
 func notify(h *Hub, c *Client, messageType byte) {
-	for client := range h.clients {
-		message := append(c.ID, messageType)
-		client.Send <- message
-	}
+	message := append(c.ID, messageType)
+	sendToOtherClients(h, message, c)
+	addBuffer(h, c, &message)
 }
 
 func closeConnection(h *Hub, c *Client) {
