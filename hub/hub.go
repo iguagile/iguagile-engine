@@ -70,14 +70,14 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			notify(h, client, newConnection)
+			client.notify(newConnection)
 			h.clients[client] = true
 			for message := range h.RPCBuffer {
 				client.Send <- *message
 			}
 		case client := <-h.Unregister:
 			if _, ok := h.clients[client]; ok {
-				closeConnection(h, client)
+				client.closeConnection()
 			}
 		case receivedData := <-h.Receive:
 			rowData, err := data.NewBinaryData(receivedData.Message, data.Inbound)
@@ -89,60 +89,60 @@ func (h *Hub) Run() {
 			message := append(append(sender.ID, rowData.MessageType), rowData.Payload...)
 			switch rowData.Target {
 			case otherClients:
-				sendToOtherClients(h, message, sender)
+				sender.sendToOtherClients(message)
 			case allClients:
-				sendToAllClients(h, message)
+				sender.sendToAllClients(message)
 			case otherClientsBuffered:
-				sendToOtherClients(h, message, sender)
-				addBuffer(h, sender, &message)
+				sender.sendToOtherClients(message)
+				sender.addBuffer(&message)
 			case allClientsBuffered:
-				sendToAllClients(h, message)
-				addBuffer(h, sender, &message)
+				sender.sendToAllClients(message)
+				sender.addBuffer(&message)
 			}
 		}
 	}
 }
 
-func addBuffer(h *Hub, c *Client, message *[]byte)  {
+func (c *Client) addBuffer(message *[]byte) {
 	c.RPCBuffer[message] = true
-	h.RPCBuffer[message] = true
+	c.hub.RPCBuffer[message] = true
 }
 
-func sendToAllClients(h *Hub, message []byte) {
-	for client := range h.clients {
+func (c *Client) sendToAllClients(message []byte) {
+	for client := range c.hub.clients {
 		select {
 		case client.Send <- message:
 		default:
-			closeConnection(h, client)
+			c.closeConnection()
 		}
 	}
 }
 
-func sendToOtherClients(h *Hub, message []byte, sender *Client) {
-	for client := range h.clients {
-		if client != sender {
+func (c *Client) sendToOtherClients(message []byte) {
+	for client := range c.hub.clients {
+		if client != c {
 			select {
 			case client.Send <- message:
 			default:
-				closeConnection(h, client)
+				client.closeConnection()
 			}
 		}
 	}
 }
 
-func notify(h *Hub, c *Client, messageType byte) {
+func (c *Client) notify(messageType byte) {
 	message := append(c.ID, messageType)
-	sendToOtherClients(h, message, c)
-	addBuffer(h, c, &message)
+	c.sendToOtherClients(message)
+	c.addBuffer(&message)
 }
 
-func closeConnection(h *Hub, c *Client) {
-	notify(h, c, exitConnection)
+func (c *Client) closeConnection() {
+	c.notify(exitConnection)
 	// TODO subType add RPCBuffer.
 	for message := range c.RPCBuffer {
-		delete(h.RPCBuffer, message)
+		delete(c.hub.RPCBuffer, message)
 	}
-	delete(h.clients, c)
+	delete(c.hub.clients, c)
 	close(c.Send)
 }
 
