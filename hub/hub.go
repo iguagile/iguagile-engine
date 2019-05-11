@@ -70,11 +70,13 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			client.notify(newConnection)
+			message := append(client.ID, newConnection)
+			client.sendToOtherClients(message)
 			h.clients[client] = true
 			for message := range h.RPCBuffer {
 				client.Send <- *message
 			}
+			client.addBuffer(&message)
 		case client := <-h.Unregister:
 			if _, ok := h.clients[client]; ok {
 				client.closeConnection()
@@ -130,14 +132,9 @@ func (c *Client) sendToOtherClients(message []byte) {
 	}
 }
 
-func (c *Client) notify(messageType byte) {
-	message := append(c.ID, messageType)
-	c.sendToOtherClients(message)
-	c.addBuffer(&message)
-}
-
 func (c *Client) closeConnection() {
-	c.notify(exitConnection)
+	message := append(c.ID, exitConnection)
+	c.sendToOtherClients(message)
 	// TODO subType add RPCBuffer.
 	for message := range c.RPCBuffer {
 		delete(c.hub.RPCBuffer, message)
