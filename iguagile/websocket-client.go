@@ -11,14 +11,14 @@ import (
 // ClientWebsocket is a middleman between the websocket connection and the room.
 type ClientWebsocket struct {
 	id     []byte
-	conn   websocket.Conn
+	conn   *websocket.Conn
 	room   *Room
 	buffer map[*[]byte]bool
 	send   chan []byte
 }
 
 // NewClientWebsocket is ClientWebsocket constructed.
-func NewClientWebsocket(room *Room, conn websocket.Conn) *ClientWebsocket {
+func NewClientWebsocket(room *Room, conn *websocket.Conn) *ClientWebsocket {
 	uid, err := uuid.NewUUID()
 	if err != nil {
 		log.Println(err)
@@ -64,7 +64,7 @@ func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 	}
 }
 
-// CloseConnection is Disconnect and unregister client
+// CloseConnection is disconnect and unregister client
 func (c *ClientWebsocket) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)

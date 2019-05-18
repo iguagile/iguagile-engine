@@ -20,6 +20,6 @@ func ServeWebsocket(room *Room, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := NewClientWebsocket(room, *conn)
+	client := NewClientWebsocket(room, conn)
 	room.Register(client)
 }
