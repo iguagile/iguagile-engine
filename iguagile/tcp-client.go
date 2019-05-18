@@ -80,14 +80,14 @@ func (c *ClientTCP) Send(message []byte) {
 	c.send <- message
 }
 
-// Send to all clients
+// SendToAllClients is send outbound message to all registered clients
 func (c *ClientTCP) SendToAllClients(message []byte) {
 	for client := range c.room.clients {
 		client.Send(message)
 	}
 }
 
-// Send to other clients
+// SendToOtherClients is send outbound message to other registered clients
 func (c *ClientTCP) SendToOtherClients(message []byte) {
 	for client := range c.room.clients {
 		if client != c {
@@ -96,7 +96,7 @@ func (c *ClientTCP) SendToOtherClients(message []byte) {
 	}
 }
 
-// Disconnect and unregister client
+// CloseConnection is disconnect and unregister client
 func (c *ClientTCP) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
@@ -109,7 +109,7 @@ func (c *ClientTCP) CloseConnection() {
 	}
 }
 
-// Buffer messages
+// AddBuffer is buffer messages
 func (c *ClientTCP) AddBuffer(message *[]byte) {
 	c.buffer[message] = true
 	c.room.buffer[message] = true

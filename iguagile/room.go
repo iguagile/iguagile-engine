@@ -72,7 +72,7 @@ func (r *Room) Register(client Client) {
 	client.AddBuffer(&message)
 }
 
-// Inbound messages from the clients.
+// Receive is receive inbound messages from the clients.
 func (r *Room) Receive(sender Client, receivedData []byte) {
 	rowData, err := data.NewBinaryData(receivedData, data.Inbound)
 	if err != nil {

@@ -48,14 +48,14 @@ func (c *ClientWebsocket) Send(message []byte) {
 	c.send <- message
 }
 
-// Send to all clients
+// SendToAllClients is send outbound message to all registered clients
 func (c *ClientWebsocket) SendToAllClients(message []byte) {
 	for client := range c.room.clients {
 		client.Send(message)
 	}
 }
 
-// Send to other clients
+// SendToOtherClients is send outbound message to other registered clients
 func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 	for client := range c.room.clients {
 		if client != c {
@@ -77,7 +77,7 @@ func (c *ClientWebsocket) CloseConnection() {
 	}
 }
 
-// Buffer messages
+// AddBuffer is buffer messages
 func (c *ClientWebsocket) AddBuffer(message *[]byte) {
 	c.buffer[message] = true
 	c.room.buffer[message] = true
