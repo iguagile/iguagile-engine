@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// ClientWebsocket is a middleman between the websocket connection and the room.
 type ClientWebsocket struct {
 	id     []byte
 	conn   websocket.Conn
@@ -16,6 +17,7 @@ type ClientWebsocket struct {
 	send   chan []byte
 }
 
+// NewClientWebsocket is ClientWebsocket constructed.
 func NewClientWebsocket(room *Room, conn websocket.Conn) *ClientWebsocket {
 	uid, err := uuid.NewUUID()
 	if err != nil {
@@ -30,25 +32,30 @@ func NewClientWebsocket(room *Room, conn websocket.Conn) *ClientWebsocket {
 	}
 }
 
+// Run is provides backend synchronize goroutine.
 func (c *ClientWebsocket) Run() {
 	go c.readPump()
 	go c.writePump()
 }
 
+// GetID is getter for id
 func (c *ClientWebsocket) GetID() []byte {
 	return c.id
 }
 
+// Send is enqueue outbound messages
 func (c *ClientWebsocket) Send(message []byte) {
 	c.send <- message
 }
 
+// Send to all clients
 func (c *ClientWebsocket) SendToAllClients(message []byte) {
 	for client := range c.room.clients {
 		client.Send(message)
 	}
 }
 
+// Send to other clients
 func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 	for client := range c.room.clients {
 		if client != c {
@@ -57,6 +64,7 @@ func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 	}
 }
 
+// Disconnect and unregister client
 func (c *ClientWebsocket) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
@@ -69,6 +77,7 @@ func (c *ClientWebsocket) CloseConnection() {
 	}
 }
 
+// Buffer messages
 func (c *ClientWebsocket) AddBuffer(message *[]byte) {
 	c.buffer[message] = true
 	c.room.buffer[message] = true

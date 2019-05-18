@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ClientTCP is a middleman between the tcp connection and the room.
 type ClientTCP struct {
 	id     []byte
 	conn   *net.TCPConn
@@ -15,6 +16,7 @@ type ClientTCP struct {
 	send   chan []byte
 }
 
+// NewClientTCP is ClientTCP constructed.
 func NewClientTCP(room *Room, conn *net.TCPConn) *ClientTCP {
 	uid, err := uuid.NewUUID()
 	if err != nil {
@@ -29,6 +31,7 @@ func NewClientTCP(room *Room, conn *net.TCPConn) *ClientTCP {
 	}
 }
 
+// Run is provides backend synchronize goroutine.
 func (c *ClientTCP) Run() {
 	go func() {
 		msgSize := make([]byte, 1)
@@ -67,20 +70,24 @@ func (c *ClientTCP) Run() {
 	}()
 }
 
+// GetID is getter for id
 func (c *ClientTCP) GetID() []byte {
 	return c.id
 }
 
+// Send is enqueue outbound messages
 func (c *ClientTCP) Send(message []byte) {
 	c.send <- message
 }
 
+// Send to all clients
 func (c *ClientTCP) SendToAllClients(message []byte) {
 	for client := range c.room.clients {
 		client.Send(message)
 	}
 }
 
+// Send to other clients
 func (c *ClientTCP) SendToOtherClients(message []byte) {
 	for client := range c.room.clients {
 		if client != c {
@@ -89,6 +96,7 @@ func (c *ClientTCP) SendToOtherClients(message []byte) {
 	}
 }
 
+// Disconnect and unregister client
 func (c *ClientTCP) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
@@ -101,6 +109,7 @@ func (c *ClientTCP) CloseConnection() {
 	}
 }
 
+// Buffer messages
 func (c *ClientTCP) AddBuffer(message *[]byte) {
 	c.buffer[message] = true
 	c.room.buffer[message] = true

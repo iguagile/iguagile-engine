@@ -9,6 +9,8 @@ import (
 	"github.com/iguagile/iguagile-engine/data"
 )
 
+// Room maintains the set of active clients and broadcasts messages to the
+// clients.
 type Room struct {
 	id      []byte
 	clients map[Client]bool
@@ -16,6 +18,7 @@ type Room struct {
 	log     *log.Logger
 }
 
+// NewRoom is Room constructed.
 func NewRoom() *Room {
 	uid, err := uuid.NewUUID()
 	if err != nil {
@@ -29,6 +32,7 @@ func NewRoom() *Room {
 	}
 }
 
+// RPC target
 const (
 	allClients = iota
 	otherClients
@@ -36,6 +40,7 @@ const (
 	otherClientsBuffered
 )
 
+// Message type
 const (
 	newConnection = iota
 	exitConnection
@@ -55,6 +60,7 @@ const (
 	maxMessageSize = 512
 )
 
+// Register requests from the clients.
 func (r *Room) Register(client Client) {
 	go client.Run()
 	message := append(client.GetID(), newConnection)
@@ -66,6 +72,7 @@ func (r *Room) Register(client Client) {
 	client.AddBuffer(&message)
 }
 
+// Inbound messages from the clients.
 func (r *Room) Receive(sender Client, receivedData []byte) {
 	rowData, err := data.NewBinaryData(receivedData, data.Inbound)
 	if err != nil {
