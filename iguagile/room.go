@@ -10,7 +10,7 @@ import (
 )
 
 type Room struct {
-	id []byte
+	id      []byte
 	clients map[Client]bool
 	buffer  map[*[]byte]bool
 	log     *log.Logger
