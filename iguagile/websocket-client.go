@@ -64,7 +64,7 @@ func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 	}
 }
 
-// Disconnect and unregister client
+// CloseConnection is Disconnect and unregister client
 func (c *ClientWebsocket) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
