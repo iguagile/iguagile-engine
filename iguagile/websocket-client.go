@@ -1,10 +1,11 @@
 package iguagile
 
 import (
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"log"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 type ClientWebsocket struct {
