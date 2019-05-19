@@ -10,11 +10,10 @@ import (
 
 // ClientTCP is a middleman between the tcp connection and the room.
 type ClientTCP struct {
-	id     []byte
-	conn   *net.TCPConn
-	room   *Room
-	buffer []*[]byte
-	send   chan []byte
+	id   []byte
+	conn *net.TCPConn
+	room *Room
+	send chan []byte
 }
 
 // NewClientTCP is ClientTCP constructed.
@@ -104,17 +103,8 @@ func (c *ClientTCP) SendToOtherClients(message []byte) {
 func (c *ClientTCP) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
-	for _, message := range c.buffer {
-		delete(c.room.buffer, message)
-	}
-	delete(c.room.clients, c)
+	c.room.Unregister(c)
 	if err := c.conn.Close(); err != nil {
 		c.room.log.Println(err)
 	}
-}
-
-// AddBuffer is buffer messages
-func (c *ClientTCP) AddBuffer(message *[]byte) {
-	c.buffer = append(c.buffer, message)
-	c.room.buffer[message] = true
 }

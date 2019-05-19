@@ -10,11 +10,10 @@ import (
 
 // ClientWebsocket is a middleman between the websocket connection and the room.
 type ClientWebsocket struct {
-	id     []byte
-	conn   *websocket.Conn
-	room   *Room
-	buffer []*[]byte
-	send   chan []byte
+	id   []byte
+	conn *websocket.Conn
+	room *Room
+	send chan []byte
 }
 
 // NewClientWebsocket is ClientWebsocket constructed.
@@ -67,19 +66,10 @@ func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 func (c *ClientWebsocket) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
-	for _, message := range c.buffer {
-		delete(c.room.buffer, message)
-	}
-	delete(c.room.clients, c)
+	c.room.Unregister(c)
 	if err := c.conn.Close(); err != nil {
 		c.room.log.Println(err)
 	}
-}
-
-// AddBuffer is buffer messages
-func (c *ClientWebsocket) AddBuffer(message *[]byte) {
-	c.buffer = append(c.buffer, message)
-	c.room.buffer[message] = true
 }
 
 // Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.

@@ -14,7 +14,7 @@ import (
 type Room struct {
 	id      []byte
 	clients map[Client]bool
-	buffer  map[*[]byte]bool
+	buffer  map[*[]byte]Client
 	log     *log.Logger
 }
 
@@ -27,7 +27,7 @@ func NewRoom() *Room {
 	return &Room{
 		id:      uid[:],
 		clients: make(map[Client]bool),
-		buffer:  make(map[*[]byte]bool),
+		buffer:  make(map[*[]byte]Client),
 		log:     log.New(os.Stderr, "iguagile-engine ", log.Lshortfile),
 	}
 }
@@ -66,10 +66,19 @@ func (r *Room) Register(client Client) {
 	message := append(client.GetID(), newConnection)
 	client.SendToOtherClients(message)
 	r.clients[client] = true
-	for message := range r.buffer {
-		client.Send(*message)
+	for msg := range r.buffer {
+		client.Send(*msg)
 	}
-	client.AddBuffer(&message)
+	r.buffer[&message] = client
+}
+
+func (r *Room) Unregister(client Client) {
+	for message, c := range r.buffer {
+		if c == client {
+			delete(r.buffer, message)
+		}
+	}
+	delete(r.clients, client)
 }
 
 // Receive is receive inbound messages from the clients.
@@ -90,10 +99,10 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 		sender.SendToAllClients(message)
 	case OtherClientsBuffered:
 		sender.SendToOtherClients(message)
-		sender.AddBuffer(&message)
+		r.buffer[&message] = sender
 	case AllClientsBuffered:
 		sender.SendToAllClients(message)
-		sender.AddBuffer(&message)
+		r.buffer[&message] = sender
 	default:
 		r.log.Println(receivedData)
 	}
