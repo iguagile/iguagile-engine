@@ -51,6 +51,7 @@ func (c *ClientTCP) Run() {
 				break
 			}
 			if n != size {
+				c.room.log.Println("data size does not match")
 				c.CloseConnection()
 				break
 			}
