@@ -1,4 +1,4 @@
-package main
+package iguagile
 
 import (
 	"net/http"
@@ -8,12 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iguagile/iguagile-engine/data"
-
 	"github.com/google/uuid"
-
 	"github.com/gorilla/websocket"
-	"github.com/iguagile/iguagile-engine/hub"
+	"github.com/iguagile/iguagile-engine/data"
 )
 
 var uri = url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
@@ -25,29 +22,28 @@ func NewServer(t *testing.T) *http.Server {
 
 	go func(t *testing.T) {
 
-		h := hub.NewHub()
-		go h.Run()
-		f := func(w http.ResponseWriter, r *http.Request) {
-			hub.ServeWs(h, w, r)
+		room := NewRoom()
+		f := func(writer http.ResponseWriter, request *http.Request) {
+			ServeWebsocket(room, writer, request)
 		}
 		srv.Handler = http.HandlerFunc(f)
 
 		if err := srv.ListenAndServe(); err != nil {
-			t.Log(err)
+			t.Errorf("%v", err)
 		}
 	}(t)
 
 	return srv
 }
 
-func TestConnection(t *testing.T) {
+func TestConnectionWebsocket(t *testing.T) {
 	testData := []struct {
 		send []byte
 		want []byte
 	}{
-		{append([]byte{1, 2}, []byte("hello")...), []byte("hello")},
-		{append([]byte{1, 3}, []byte("MSG")...), []byte("MSG")},
-		{append([]byte{1, 4}, []byte("HOGE")...), []byte("HOGE")},
+		{append([]byte{OtherClients, RPC}, "iguana"...), []byte("iguana")},
+		{append([]byte{OtherClients, Transform}, "agile"...), []byte("agile")},
+		{append([]byte{OtherClients, Transform}, "iguagile"...), []byte("iguagile")},
 	}
 
 	srv := NewServer(t)
@@ -82,13 +78,13 @@ func TestConnection(t *testing.T) {
 		for _, v := range testData {
 			wg := &sync.WaitGroup{}
 			wg.Add(2)
-			go receiver(wsRec, t, wg, v.want)
-			go sender(wsSend, t, wg, v.send)
+			go receiverWebsocket(wsRec, t, wg, v.want)
+			go senderWebsocket(wsSend, t, wg, v.send)
 			wg.Wait()
 		}
 
 	}
-	// wait sender and receiver done
+	// wait senderWebsocket and receiverWebsocket done
 	if err := wsSend.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
 		t.Errorf("%v", err)
@@ -101,7 +97,7 @@ func TestConnection(t *testing.T) {
 
 }
 
-func receiver(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want []byte) {
+func receiverWebsocket(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want []byte) {
 
 OUTER:
 	for {
@@ -152,7 +148,7 @@ OUTER:
 
 }
 
-func sender(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
+func senderWebsocket(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
 	if err := ws.WriteMessage(websocket.BinaryMessage, send); err != nil {
 		t.Errorf("%v", err)
 	}
