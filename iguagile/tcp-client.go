@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"fmt"
 	"log"
 	"net"
 
@@ -50,7 +51,8 @@ func (c *ClientTCP) Run() {
 				break
 			}
 			if n != size {
-				c.room.log.Println("data size does not match")
+				msg := fmt.Sprintf("data size does not match. ClientID:%v %vbyte %vbyte", c.id, size, n)
+				c.room.log.Println(msg)
 				c.CloseConnection()
 				break
 			}
