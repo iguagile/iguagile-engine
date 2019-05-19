@@ -43,14 +43,14 @@ func (c *ClientTCP) Run() {
 				c.CloseConnection()
 				break
 			}
-			size := sizeBuf[0] + sizeBuf[1]<<8
+			size := int(sizeBuf[0]) + int(sizeBuf[1])<<8
 			n, err := c.conn.Read(buf[:size])
 			if err != nil {
 				c.room.log.Println(err)
 				c.CloseConnection()
 				break
 			}
-			if byte(n) != size {
+			if n != size {
 				c.CloseConnection()
 				break
 			}

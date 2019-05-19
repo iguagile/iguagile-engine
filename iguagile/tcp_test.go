@@ -97,13 +97,13 @@ OUTER:
 			t.Errorf("%v", err)
 		}
 
-		size := sizeBuf[0] + sizeBuf[1]<<8
+		size := int(sizeBuf[0]) + int(sizeBuf[1])<<8
 		buf := make([]byte, size)
 		n, err := conn.Read(buf)
 		if err != nil {
 			t.Errorf("%v", err)
 		}
-		if n != int(size) {
+		if n != size {
 			t.Errorf("data size does not match")
 		}
 

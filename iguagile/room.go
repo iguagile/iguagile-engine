@@ -79,7 +79,7 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 		r.log.Println(err)
 	}
 	message := append(append(sender.GetID(), rowData.MessageType), rowData.Payload...)
-	if len(message) >= 1 << 16 {
+	if len(message) >= 1<<16 {
 		r.log.Println("too long message")
 		return
 	}
