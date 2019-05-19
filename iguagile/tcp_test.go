@@ -10,7 +10,7 @@ import (
 	"github.com/iguagile/iguagile-engine/data"
 )
 
-const host = "127.0.0.1:5000"
+const host = "127.0.0.1:4000"
 
 func Listen(t *testing.T) {
 	r := NewRoom()
