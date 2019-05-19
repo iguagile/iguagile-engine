@@ -34,10 +34,10 @@ func NewRoom() *Room {
 
 // RPC target
 const (
-	allClients = iota
-	otherClients
-	allClientsBuffered
-	otherClientsBuffered
+	AllClients = iota
+	OtherClients
+	AllClientsBuffered
+	OtherClientsBuffered
 )
 
 // Message type
@@ -80,14 +80,14 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	}
 	message := append(append(sender.GetID(), rowData.MessageType), rowData.Payload...)
 	switch rowData.Target {
-	case otherClients:
+	case OtherClients:
 		sender.SendToOtherClients(message)
-	case allClients:
+	case AllClients:
 		sender.SendToAllClients(message)
-	case otherClientsBuffered:
+	case OtherClientsBuffered:
 		sender.SendToOtherClients(message)
 		sender.AddBuffer(&message)
-	case allClientsBuffered:
+	case AllClientsBuffered:
 		sender.SendToAllClients(message)
 		sender.AddBuffer(&message)
 	default:
