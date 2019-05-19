@@ -125,7 +125,7 @@ func (c *ClientWebsocket) writePump() {
 				c.room.log.Println(err)
 			}
 			if !ok {
-				// The hub closed the channel.
+				// The room closed the channel.
 				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
 					c.room.log.Println(err)
 				}
