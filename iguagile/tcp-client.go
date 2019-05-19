@@ -34,22 +34,23 @@ func NewClientTCP(room *Room, conn *net.TCPConn) *ClientTCP {
 // Run is provides backend synchronize goroutine.
 func (c *ClientTCP) Run() {
 	go func() {
-		msgSize := make([]byte, 1)
+		sizeBuf := make([]byte, 2)
 		buf := make([]byte, maxMessageSize)
 		for {
-			_, err := c.conn.Read(msgSize)
+			_, err := c.conn.Read(sizeBuf)
 			if err != nil {
 				c.room.log.Println(err)
 				c.CloseConnection()
 				break
 			}
-			n, err := c.conn.Read(buf[:msgSize[0]])
+			size := sizeBuf[0] + sizeBuf[1]<<8
+			n, err := c.conn.Read(buf[:size])
 			if err != nil {
 				c.room.log.Println(err)
 				c.CloseConnection()
 				break
 			}
-			if byte(n) != msgSize[0] {
+			if byte(n) != size {
 				c.CloseConnection()
 				break
 			}
@@ -59,7 +60,8 @@ func (c *ClientTCP) Run() {
 	go func() {
 		for {
 			message := <-c.send
-			message = append([]byte{byte(len(message))}, message...)
+			size := len(message)
+			message = append([]byte{byte(size & 255), byte(size >> 8)}, message...)
 			_, err := c.conn.Write(message)
 			if err != nil {
 				c.room.log.Println(err)

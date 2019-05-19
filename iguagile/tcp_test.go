@@ -91,19 +91,20 @@ func TestConnection(t *testing.T) {
 func receiver(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, want []byte) {
 OUTER:
 	for {
-		length := make([]byte, 1)
-		_, err := conn.Read(length)
+		sizeBuf := make([]byte, 2)
+		_, err := conn.Read(sizeBuf)
 		if err != nil {
 			t.Errorf("%v", err)
 		}
 
-		buf := make([]byte, length[0])
+		size := sizeBuf[0] + sizeBuf[1]<<8
+		buf := make([]byte, size)
 		n, err := conn.Read(buf)
 		if err != nil {
 			t.Errorf("%v", err)
 		}
-		if n != int(length[0]) {
-			t.Errorf("data length does not match")
+		if n != int(size) {
+			t.Errorf("data size does not match")
 		}
 
 		bin, err := data.NewBinaryData(buf, data.Outbound)
@@ -142,7 +143,8 @@ OUTER:
 }
 
 func sender(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, send []byte) {
-	buf := append([]byte{byte(len(send))}, send...)
+	size := len(send)
+	buf := append([]byte{byte(size & 255), byte(size >> 8)}, send...)
 	_, err := conn.Write(buf)
 	if err != nil {
 		t.Errorf("%v", err)

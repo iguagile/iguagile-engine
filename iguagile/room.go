@@ -76,9 +76,13 @@ func (r *Room) Register(client Client) {
 func (r *Room) Receive(sender Client, receivedData []byte) {
 	rowData, err := data.NewBinaryData(receivedData, data.Inbound)
 	if err != nil {
-		log.Println(err)
+		r.log.Println(err)
 	}
 	message := append(append(sender.GetID(), rowData.MessageType), rowData.Payload...)
+	if len(message) >= 1 << 16 {
+		r.log.Println("too long message")
+		return
+	}
 	switch rowData.Target {
 	case OtherClients:
 		sender.SendToOtherClients(message)
