@@ -12,7 +12,7 @@ type ClientTCP struct {
 	id     []byte
 	conn   *net.TCPConn
 	room   *Room
-	buffer map[*[]byte]bool
+	buffer []*[]byte
 	send   chan []byte
 }
 
@@ -23,11 +23,10 @@ func NewClientTCP(room *Room, conn *net.TCPConn) *ClientTCP {
 		log.Println(err)
 	}
 	return &ClientTCP{
-		id:     uid[:],
-		conn:   conn,
-		room:   room,
-		buffer: make(map[*[]byte]bool),
-		send:   make(chan []byte),
+		id:   uid[:],
+		conn: conn,
+		room: room,
+		send: make(chan []byte),
 	}
 }
 
@@ -103,7 +102,7 @@ func (c *ClientTCP) SendToOtherClients(message []byte) {
 func (c *ClientTCP) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
-	for message := range c.buffer {
+	for _, message := range c.buffer {
 		delete(c.room.buffer, message)
 	}
 	delete(c.room.clients, c)
@@ -114,6 +113,6 @@ func (c *ClientTCP) CloseConnection() {
 
 // AddBuffer is buffer messages
 func (c *ClientTCP) AddBuffer(message *[]byte) {
-	c.buffer[message] = true
+	c.buffer = append(c.buffer, message)
 	c.room.buffer[message] = true
 }

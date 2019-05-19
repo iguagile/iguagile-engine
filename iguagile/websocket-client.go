@@ -13,7 +13,7 @@ type ClientWebsocket struct {
 	id     []byte
 	conn   *websocket.Conn
 	room   *Room
-	buffer map[*[]byte]bool
+	buffer []*[]byte
 	send   chan []byte
 }
 
@@ -24,11 +24,10 @@ func NewClientWebsocket(room *Room, conn *websocket.Conn) *ClientWebsocket {
 		log.Println(err)
 	}
 	return &ClientWebsocket{
-		id:     uid[:],
-		conn:   conn,
-		room:   room,
-		buffer: make(map[*[]byte]bool),
-		send:   make(chan []byte),
+		id:   uid[:],
+		conn: conn,
+		room: room,
+		send: make(chan []byte),
 	}
 }
 
@@ -68,7 +67,7 @@ func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 func (c *ClientWebsocket) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
-	for message := range c.buffer {
+	for _, message := range c.buffer {
 		delete(c.room.buffer, message)
 	}
 	delete(c.room.clients, c)
@@ -79,9 +78,13 @@ func (c *ClientWebsocket) CloseConnection() {
 
 // AddBuffer is buffer messages
 func (c *ClientWebsocket) AddBuffer(message *[]byte) {
-	c.buffer[message] = true
+	c.buffer = append(c.buffer, message)
 	c.room.buffer[message] = true
 }
+
+// Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// https://github.com/gorilla/websocket/blob/master/LICENSE
 
 func (c *ClientWebsocket) readPump() {
 	defer func() {
