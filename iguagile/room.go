@@ -72,6 +72,7 @@ func (r *Room) Register(client Client) {
 	r.buffer[&message] = client
 }
 
+// Unregister requests from clients.
 func (r *Room) Unregister(client Client) {
 	for message, c := range r.buffer {
 		if c == client {
