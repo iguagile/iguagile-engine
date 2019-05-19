@@ -38,7 +38,7 @@ const (
 	Transform = 3
 )
 
-func TestConnection(t *testing.T) {
+func TestConnectionTCP(t *testing.T) {
 	testData := []struct {
 		send []byte
 		want []byte
@@ -80,15 +80,15 @@ func TestConnection(t *testing.T) {
 		for _, v := range testData {
 			wg := &sync.WaitGroup{}
 			wg.Add(2)
-			go receiver(rec, t, wg, v.want)
-			go sender(send, t, wg, v.send)
+			go receiverTCP(rec, t, wg, v.want)
+			go senderTCP(send, t, wg, v.send)
 			wg.Wait()
 		}
 
 	}
 }
 
-func receiver(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, want []byte) {
+func receiverTCP(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, want []byte) {
 OUTER:
 	for {
 		sizeBuf := make([]byte, 2)
@@ -142,7 +142,7 @@ OUTER:
 	}
 }
 
-func sender(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, send []byte) {
+func senderTCP(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, send []byte) {
 	size := len(send)
 	buf := append([]byte{byte(size & 255), byte(size >> 8)}, send...)
 	_, err := conn.Write(buf)
