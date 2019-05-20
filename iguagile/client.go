@@ -7,6 +7,5 @@ type Client interface {
 	SendToAllClients([]byte)
 	SendToOtherClients([]byte)
 	CloseConnection()
-	AddBuffer(*[]byte)
 	GetID() []byte
 }
