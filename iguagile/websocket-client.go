@@ -17,7 +17,7 @@ type ClientWebsocket struct {
 
 // NewClientWebsocket is ClientWebsocket constructed.
 func NewClientWebsocket(room *Room, conn *websocket.Conn) *ClientWebsocket {
-	uid := uuid.Must(uuid.NewUUID())[]
+	uid := uuid.Must(uuid.NewUUID())
 
 	return &ClientWebsocket{
 		id:   uid[:],
