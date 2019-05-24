@@ -1,7 +1,6 @@
 package iguagile
 
 import (
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,10 +17,8 @@ type ClientWebsocket struct {
 
 // NewClientWebsocket is ClientWebsocket constructed.
 func NewClientWebsocket(room *Room, conn *websocket.Conn) *ClientWebsocket {
-	uid, err := uuid.NewUUID()
-	if err != nil {
-		log.Println(err)
-	}
+	uid := uuid.Must(uuid.NewUUID())[]
+
 	return &ClientWebsocket{
 		id:   uid[:],
 		conn: conn,
