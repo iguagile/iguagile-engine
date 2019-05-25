@@ -2,7 +2,6 @@ package iguagile
 
 import (
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/google/uuid"
@@ -18,10 +17,8 @@ type ClientTCP struct {
 
 // NewClientTCP is ClientTCP constructed.
 func NewClientTCP(room *Room, conn *net.TCPConn) *ClientTCP {
-	uid, err := uuid.NewUUID()
-	if err != nil {
-		log.Println(err)
-	}
+	uid := uuid.Must(uuid.NewUUID())
+
 	return &ClientTCP{
 		id:   uid[:],
 		conn: conn,
