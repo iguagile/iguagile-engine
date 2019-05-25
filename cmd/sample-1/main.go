@@ -14,7 +14,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	listen, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
 	go func() {
 		for {
 			conn, err := listen.AcceptTCP()
@@ -25,9 +29,6 @@ func main() {
 			iguagile.ServeTCP(room, conn)
 		}
 	}()
-	if err != nil {
-		log.Fatal(err)
-	}
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		iguagile.ServeWebsocket(room, writer, request)
 	})
