@@ -20,10 +20,8 @@ type Room struct {
 
 // NewRoom is Room constructed.
 func NewRoom() *Room {
-	uid, err := uuid.NewUUID()
-	if err != nil {
-		log.Println(err)
-	}
+	uid := uuid.Must(uuid.NewUUID())
+
 	return &Room{
 		id:      uid[:],
 		clients: make(map[Client]bool),
