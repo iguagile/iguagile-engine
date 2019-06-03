@@ -16,7 +16,7 @@ type Room struct {
 	clients map[Client]bool
 	buffer  map[*[]byte]Client
 	log     *log.Logger
-	store
+	Store   Redis
 }
 
 // NewRoom is Room constructed.
@@ -28,6 +28,7 @@ func NewRoom() *Room {
 		clients: make(map[Client]bool),
 		buffer:  make(map[*[]byte]Client),
 		log:     log.New(os.Stderr, "iguagile-engine ", log.Lshortfile),
+		Store:   NewRedis("localhost", 6379, uid[:]),
 	}
 }
 
