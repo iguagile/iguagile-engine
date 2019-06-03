@@ -24,7 +24,7 @@ func (r *Redis) Send(b []byte) error {
 	return err
 }
 
-// Send  TODO godoc.
+// Close  TODO godoc.
 func (r *Redis) Close() error {
 	return r.conn.Close()
 }
