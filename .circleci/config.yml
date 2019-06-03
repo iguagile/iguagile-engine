@@ -8,6 +8,7 @@ jobs:
       - image: circleci/golang:1.11
         environment:
           GO111MODULE: "on"
+          REDIS_HOST: "localhost:6379"
       - image: redis:latest
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:

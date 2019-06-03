@@ -28,7 +28,7 @@ func NewRoom() *Room {
 		clients: make(map[Client]bool),
 		buffer:  make(map[*[]byte]Client),
 		log:     log.New(os.Stderr, "iguagile-engine ", log.Lshortfile),
-		Store:   NewRedis("localhost", 6379, uid[:]),
+		Store:   NewRedis(os.Getenv("REDIS_HOST"), uid[:]),
 	}
 }
 

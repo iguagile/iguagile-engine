@@ -2,7 +2,6 @@ package iguagile
 
 import (
 	"log"
-	"strconv"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -31,9 +30,8 @@ func (r *Redis) Close() error {
 }
 
 // NewRedis TODO godoc.
-func NewRedis(hostname string, port int, uid []byte) Redis {
-
-	conn, err := redis.Dial("tcp", hostname+":"+strconv.Itoa(port))
+func NewRedis(hostname string, uid []byte) Redis {
+	conn, err := redis.Dial("tcp", hostname)
 	if err != nil {
 		log.Fatal("filed to connect backend storage.")
 	}
