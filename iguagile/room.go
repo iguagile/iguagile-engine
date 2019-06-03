@@ -16,6 +16,7 @@ type Room struct {
 	clients map[Client]bool
 	buffer  map[*[]byte]Client
 	log     *log.Logger
+	store
 }
 
 // NewRoom is Room constructed.
@@ -99,10 +100,18 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	case OtherClientsBuffered:
 		sender.SendToOtherClients(message)
 		r.buffer[&message] = sender
+		r.syncBackend()
 	case AllClientsBuffered:
 		sender.SendToAllClients(message)
 		r.buffer[&message] = sender
+		r.syncBackend()
 	default:
 		r.log.Println(receivedData)
 	}
+}
+
+//
+func (r *Room) syncBackend() {
+	// TODO
+	// See: ./store.go
 }
