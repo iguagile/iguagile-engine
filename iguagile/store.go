@@ -12,7 +12,7 @@ type Store interface {
 	Close() error
 }
 
-// TODO godoc.
+// Redis TODO godoc.
 type Redis struct {
 	conn   redis.Conn
 	roomID []byte
@@ -27,7 +27,7 @@ func (r *Redis) Close() error {
 	return r.conn.Close()
 }
 
-// TODO godoc.
+// NewRedis TODO godoc.
 func NewRedis(hostname string, port int, uid []byte) Redis {
 	conn, err := redis.Dial("tcp", "localhost:6379")
 	if err != nil {
