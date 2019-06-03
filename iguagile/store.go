@@ -18,11 +18,13 @@ type Redis struct {
 	roomID []byte
 }
 
+// Send  TODO godoc.
 func (r *Redis) Send(b []byte) error {
 	_, err := r.conn.Do("SET", r.roomID, b)
 	return err
 }
 
+// Send  TODO godoc.
 func (r *Redis) Close() error {
 	return r.conn.Close()
 }
