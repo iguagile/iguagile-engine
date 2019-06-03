@@ -5,6 +5,7 @@ version: 2
 jobs:
   build:
     docker:
+      - image: redis:latest
       - image: circleci/golang:1.11
         environment:
           GO111MODULE: "on"
