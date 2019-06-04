@@ -33,7 +33,7 @@ func (r *Redis) Close() error {
 func NewRedis(hostname string, uid []byte) *Redis {
 	conn, err := redis.Dial("tcp", hostname)
 	if err != nil {
-		log.Fatal("filed to connect backend storage.")
+		log.Fatal("failed to connect backend storage.")
 	}
 	return &Redis{conn, uid}
 }
