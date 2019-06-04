@@ -30,10 +30,10 @@ func (r *Redis) Close() error {
 }
 
 // NewRedis TODO godoc.
-func NewRedis(hostname string, uid []byte) Redis {
+func NewRedis(hostname string, uid []byte) *Redis {
 	conn, err := redis.Dial("tcp", hostname)
 	if err != nil {
 		log.Fatal("filed to connect backend storage.")
 	}
-	return Redis{conn, uid}
+	return &Redis{conn, uid}
 }

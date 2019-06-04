@@ -16,7 +16,7 @@ type Room struct {
 	clients map[Client]bool
 	buffer  map[*[]byte]Client
 	log     *log.Logger
-	Store   Redis
+	Store   *Redis
 }
 
 // NewRoom is Room constructed.
