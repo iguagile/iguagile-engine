@@ -10,6 +10,7 @@ import (
 
 func main() {
 	room := iguagile.NewRoom()
+	defer room.Store.Close()
 	tcpAddr, err := net.ResolveTCPAddr("tcp", ":4000")
 	if err != nil {
 		log.Fatal(err)

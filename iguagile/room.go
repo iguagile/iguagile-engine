@@ -101,18 +101,18 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	case OtherClientsBuffered:
 		sender.SendToOtherClients(message)
 		r.buffer[&message] = sender
-		r.syncBackend()
+		r.syncBackend(message)
 	case AllClientsBuffered:
 		sender.SendToAllClients(message)
 		r.buffer[&message] = sender
-		r.syncBackend()
+		r.syncBackend(message)
 	default:
 		r.log.Println(receivedData)
 	}
 }
 
-//
-func (r *Room) syncBackend() {
-	// TODO
-	// See: ./store.go
+func (r *Room) syncBackend(b []byte) {
+	if err := r.Store.Send(b); err != nil {
+		r.log.Print(err)
+	}
 }
