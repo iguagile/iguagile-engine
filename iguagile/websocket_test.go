@@ -89,7 +89,7 @@ func TestConnectionWebsocket(t *testing.T) {
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
 		t.Errorf("%v", err)
 	}
-	time.Sleep(50 * time.Microsecond)
+	time.Sleep(1 * time.Second)
 	if err := wsRec.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
 		t.Errorf("%v", err)
