@@ -101,11 +101,11 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	case OtherClientsBuffered:
 		sender.SendToOtherClients(message)
 		r.buffer[&message] = sender
-		r.syncBackend(message)
+		go r.syncBackend(message)
 	case AllClientsBuffered:
 		sender.SendToAllClients(message)
 		r.buffer[&message] = sender
-		r.syncBackend(message)
+		go r.syncBackend(message)
 	default:
 		r.log.Println(receivedData)
 	}
