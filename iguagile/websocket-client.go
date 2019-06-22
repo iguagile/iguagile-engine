@@ -64,7 +64,7 @@ func (c *ClientWebsocket) CloseConnection() {
 	message := append(c.id, exitConnection)
 	c.SendToOtherClients(message)
 	c.room.Unregister(c)
-	if err := c.conn.Close(); err != nil {
+	if err := c.conn.Close(); err != nil && err.Error() != "use of closed network connection" {
 		c.room.log.Println(err)
 	}
 }
