@@ -27,7 +27,7 @@ func Listen(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 	listener, err := net.ListenTCP("tcp", addr)
-	if err != nil {
+	if err != nil && err.Error() != "read: connection reset by peer" {
 		t.Errorf("%v", err)
 	}
 	go func() {
@@ -63,7 +63,7 @@ func TestConnectionTCP(t *testing.T) {
 	}
 
 	rec, err := net.DialTCP("tcp", nil, addr)
-	if err != nil {
+	if err != nil && err.Error() != "use of closed network connection" {
 		t.Errorf("%v", err)
 	}
 	defer func() {
@@ -74,7 +74,7 @@ func TestConnectionTCP(t *testing.T) {
 	}()
 
 	send, err := net.DialTCP("tcp", nil, addr)
-	if err != nil {
+	if err != nil && err.Error() != "use of closed network connection" {
 		t.Errorf("%v", err)
 	}
 	defer func() {
