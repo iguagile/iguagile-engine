@@ -18,12 +18,13 @@ type Redis struct {
 	conn redis.Conn
 }
 
-// Send  TODO godoc.
+// GenerateServerID  TODO godoc.
 func (r *Redis) GenerateServerID() (int, error) {
 	i, err := redis.Int(r.conn.Do("INCR", "server_id"))
 	return i << 16, err
 }
 
+// GenerateRoomID  TODO godoc.
 func (r *Redis) GenerateRoomID(serverID int) (int, error) {
 	i, err := redis.Int(r.conn.Do("INCR", "room_id"))
 	return i | serverID, err
