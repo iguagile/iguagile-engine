@@ -13,29 +13,29 @@ type Store interface {
 	GenerateServerID() (int, error)
 }
 
-// Redis TODO godoc.
+// Redis is a structure that wraps goredis to make it easy to use.
 type Redis struct {
 	conn redis.Conn
 }
 
-// GenerateServerID  TODO godoc.
+// GenerateServerID is a method to number unique ServerID.
 func (r *Redis) GenerateServerID() (int, error) {
 	i, err := redis.Int(r.conn.Do("INCR", "server_id"))
 	return i << 16, err
 }
 
-// GenerateRoomID  TODO godoc.
+// GenerateRoomID numbers unique RoomIDs.
 func (r *Redis) GenerateRoomID(serverID int) (int, error) {
 	i, err := redis.Int(r.conn.Do("INCR", "room_id"))
 	return i | serverID, err
 }
 
-// Close  TODO godoc.
+// Close is a method to release resources collectively.
 func (r *Redis) Close() error {
 	return r.conn.Close()
 }
 
-// NewRedis TODO godoc.
+// NewRedis is a constructor of Redis. Perform initialization at once.
 func NewRedis(hostname string) *Redis {
 	conn, err := redis.Dial("tcp", hostname)
 	if err != nil {
