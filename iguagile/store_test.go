@@ -24,7 +24,7 @@ func TestCanGenerateRoomID(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if id <= (1 | sid) {
+	if id <= sid {
 		t.Errorf("invalid server id %b", id)
 	}
 }
