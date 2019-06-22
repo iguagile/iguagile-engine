@@ -5,30 +5,30 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/iguagile/iguagile-engine/data"
 )
 
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
-	id      []byte
+	id      int
 	clients map[Client]bool
 	buffer  map[*[]byte]Client
 	log     *log.Logger
-	Store   *Redis
 }
 
 // NewRoom is Room constructed.
-func NewRoom() *Room {
-	uid := uuid.Must(uuid.NewUUID())
+func NewRoom(serverID int, store Store) *Room {
+	roomID, err := store.GenerateRoomID(serverID)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return &Room{
-		id:      uid[:],
+		id:      roomID,
 		clients: make(map[Client]bool),
 		buffer:  make(map[*[]byte]Client),
 		log:     log.New(os.Stderr, "iguagile-engine ", log.Lshortfile),
-		Store:   NewRedis(os.Getenv("REDIS_HOST"), uid[:]),
 	}
 }
 
@@ -101,18 +101,10 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	case OtherClientsBuffered:
 		sender.SendToOtherClients(message)
 		r.buffer[&message] = sender
-		go r.syncBackend(message)
 	case AllClientsBuffered:
 		sender.SendToAllClients(message)
 		r.buffer[&message] = sender
-		go r.syncBackend(message)
 	default:
 		r.log.Println(receivedData)
-	}
-}
-
-func (r *Room) syncBackend(b []byte) {
-	if err := r.Store.Send(b); err != nil {
-		r.log.Print(err)
 	}
 }

@@ -8,20 +8,25 @@ import (
 
 // Store is an interface for connecting to backend storage and storing data.
 type Store interface {
-	Send([]byte) error
 	Close() error
+	GenerateRoomID(serverID int) (int, error)
+	GenerateServerID() (int, error)
 }
 
 // Redis TODO godoc.
 type Redis struct {
-	conn   redis.Conn
-	roomID []byte
+	conn redis.Conn
 }
 
 // Send  TODO godoc.
-func (r *Redis) Send(b []byte) error {
-	_, err := r.conn.Do("SET", r.roomID, b)
-	return err
+func (r *Redis) GenerateServerID() (int, error) {
+	i, err := redis.Int(r.conn.Do("INCR", "server_id"))
+	return i << 16, err
+}
+
+func (r *Redis) GenerateRoomID(serverID int) (int, error) {
+	i, err := redis.Int(r.conn.Do("INCR", "room_id"))
+	return i | serverID, err
 }
 
 // Close  TODO godoc.
@@ -30,10 +35,12 @@ func (r *Redis) Close() error {
 }
 
 // NewRedis TODO godoc.
-func NewRedis(hostname string, uid []byte) *Redis {
+func NewRedis(hostname string) *Redis {
 	conn, err := redis.Dial("tcp", hostname)
 	if err != nil {
+		log.Println(err)
 		log.Fatal("failed to connect backend storage.")
+
 	}
-	return &Redis{conn, uid}
+	return &Redis{conn}
 }

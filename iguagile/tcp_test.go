@@ -1,7 +1,9 @@
 package iguagile
 
 import (
+	"log"
 	"net"
+	"os"
 	"reflect"
 	"sync"
 	"testing"
@@ -13,7 +15,13 @@ import (
 const host = "127.0.0.1:4000"
 
 func Listen(t *testing.T) {
-	r := NewRoom()
+	store := NewRedis(os.Getenv("REDIS_HOST"))
+	serverID, err := store.GenerateServerID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	r := NewRoom(serverID, store)
+
 	addr, err := net.ResolveTCPAddr("tcp", host)
 	if err != nil {
 		t.Errorf("%v", err)
