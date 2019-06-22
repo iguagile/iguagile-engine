@@ -20,6 +20,7 @@ type Redis struct {
 
 // GenerateServerID is a method to number unique ServerID.
 func (r *Redis) GenerateServerID() (int, error) {
+	// TODO CHECK TO 1 << 16 over.
 	i, err := redis.Int(r.conn.Do("INCR", "server_id"))
 	return i << 16, err
 }
