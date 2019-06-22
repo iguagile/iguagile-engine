@@ -9,7 +9,7 @@ jobs:
         environment:
           GO111MODULE: "on"
           REDIS_HOST: "localhost:6379"
-      - image: redis:latest
+      - image: eqalpha/keydb:latest
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:
       - checkout
