@@ -28,7 +28,7 @@ func NewRoom(serverID int, store Store) *Room {
 		id:      roomID,
 		clients: make(map[Client]bool),
 		buffer:  make(map[*[]byte]Client),
-		log:     log.New(os.Stderr, "iguagile-engine ", log.Lshortfile),
+		log:     log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }
 
