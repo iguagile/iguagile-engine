@@ -4,12 +4,18 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/iguagile/iguagile-engine/iguagile"
 )
 
 func main() {
-	room := iguagile.NewRoom()
+	store := iguagile.NewRedis(os.Getenv("REDIS_HOST"))
+	serverID, err := store.GenerateServerID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	room := iguagile.NewRoom(serverID, store)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", ":4000")
 	if err != nil {
 		log.Fatal(err)

@@ -8,12 +8,8 @@ jobs:
       - image: circleci/golang:1.11
         environment:
           GO111MODULE: "on"
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
-
+          REDIS_HOST: "localhost:6379"
+      - image: eqalpha/keydb:latest
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:
       - checkout
@@ -21,7 +17,4 @@ jobs:
       - run: go get -u golang.org/x/lint/golint && golint -set_exit_status ./...
       - run: go vet -all -shadowstrict $(go list ./... | grep -v /vendor/ | grep -v /lib/)
       - run: go test -v ./...
-#      - run: go get -u github.com/alecthomas/gometalinter
-#      - run: gometalinter --install
-#      - run: curl https://git.io/vp6lP | sh
-#      - run: gometalinter ./...
+

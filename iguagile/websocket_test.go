@@ -1,8 +1,10 @@
 package iguagile
 
 import (
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"sync"
 	"testing"
@@ -21,8 +23,15 @@ func NewServer(t *testing.T) *http.Server {
 	}
 
 	go func(t *testing.T) {
-
-		room := NewRoom()
+		store := NewRedis(os.Getenv("REDIS_HOST"))
+		serverID, err := store.GenerateServerID()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer func() {
+			_ = store.Close()
+		}()
+		room := NewRoom(serverID, store)
 		f := func(writer http.ResponseWriter, request *http.Request) {
 			ServeWebsocket(room, writer, request)
 		}
@@ -61,7 +70,10 @@ func TestConnectionWebsocket(t *testing.T) {
 		t.Errorf("%v", resp)
 	}
 	defer func() {
-		_ = wsRec.Close()
+		err := wsRec.Close()
+		if err != nil {
+			t.Log(err)
+		}
 	}()
 
 	wsSend, resp, err := websocket.DefaultDialer.Dial(uri.String(), nil)
@@ -70,7 +82,10 @@ func TestConnectionWebsocket(t *testing.T) {
 		t.Errorf("%v", resp)
 	}
 	defer func() {
-		_ = wsSend.Close()
+		err := wsSend.Close()
+		if err != nil {
+			t.Log(err)
+		}
 	}()
 
 	// THIS IS TEST CORE.
@@ -82,16 +97,18 @@ func TestConnectionWebsocket(t *testing.T) {
 			go senderWebsocket(wsSend, t, wg, v.send)
 			wg.Wait()
 		}
-
 	}
 	// wait senderWebsocket and receiverWebsocket done
-	if err := wsSend.WriteMessage(websocket.CloseMessage,
-		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+	err = wsSend.WriteMessage(websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	if err != nil && err.Error() != "websocket: close 1000 (normal)" {
 		t.Errorf("%v", err)
 	}
-	time.Sleep(50 * time.Microsecond)
-	if err := wsRec.WriteMessage(websocket.CloseMessage,
-		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+
+	err = wsRec.WriteMessage(websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+
+	if err != nil && err.Error() != "websocket: close 1000 (normal)" {
 		t.Errorf("%v", err)
 	}
 
