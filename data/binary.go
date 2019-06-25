@@ -15,7 +15,7 @@ const (
 // BinaryData is client and server data transfer format.
 type BinaryData struct {
 	Traffic     int
-	UUID        []byte
+	ID        []byte
 	Target      byte
 	MessageType byte
 	Payload     []byte
@@ -33,9 +33,9 @@ func NewBinaryData(b []byte, t int) (BinaryData, error) {
 		p.Payload = b[2:]
 	case Outbound: // ref: https://github.com/iguagile/iguagile-engine/wiki/protocol#outbound
 		p.Traffic = t
-		p.UUID = b[:16]
-		p.MessageType = b[16:17][0]
-		p.Payload = b[17:]
+		p.ID = b[:2]
+		p.MessageType = b[2:3][0]
+		p.Payload = b[3:]
 	}
 
 	return p, nil
