@@ -121,11 +121,11 @@ OUTER:
 
 		switch bin.MessageType {
 		case data.NewConnect:
-			id := bin.ID[0] | (bin.ID[1] << 8)
+			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
 			t.Logf("new client %x", id)
 			continue OUTER
 		case data.ExitConnect:
-			id := bin.ID[0] | (bin.ID[1] << 8)
+			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
 			t.Logf("client exit %x", id)
 			continue OUTER
 		default:
