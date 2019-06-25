@@ -62,19 +62,19 @@ func TestOutbound(t *testing.T) {
 		{append(cid, append([]byte{2}, []byte("hello")...)...),
 			BinaryData{
 				Traffic:     Outbound,
-				ID:        cid,
+				ID:          cid,
 				MessageType: byte(2),
 				Payload:     []byte("hello")},
 		},
 		{append(cid, append([]byte{NewConnect}, []byte("MSG")...)...), BinaryData{
 			Traffic:     Outbound,
-			ID:        cid,
+			ID:          cid,
 			MessageType: byte(NewConnect),
 			Payload:     []byte("MSG")},
 		},
 		{append(cid, append([]byte{ExitConnect}, []byte("HOGE")...)...), BinaryData{
 			Traffic:     Outbound,
-			ID:        cid,
+			ID:          cid,
 			MessageType: byte(ExitConnect),
 			Payload:     []byte("HOGE")},
 		},
