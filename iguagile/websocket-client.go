@@ -3,28 +3,33 @@ package iguagile
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 // ClientWebsocket is a middleman between the websocket connection and the room.
 type ClientWebsocket struct {
-	id   []byte
-	conn *websocket.Conn
-	room *Room
-	send chan []byte
+	id     int
+	idByte []byte
+	conn   *websocket.Conn
+	room   *Room
+	send   chan []byte
 }
 
 // NewClientWebsocket is ClientWebsocket constructed.
-func NewClientWebsocket(room *Room, conn *websocket.Conn) *ClientWebsocket {
-	uid := uuid.Must(uuid.NewUUID())
+func NewClientWebsocket(room *Room, conn *websocket.Conn) (*ClientWebsocket, error) {
+	id, err := room.generator.Generate()
 
-	return &ClientWebsocket{
-		id:   uid[:],
-		conn: conn,
-		room: room,
-		send: make(chan []byte),
+	client := &ClientWebsocket{
+		id:     id,
+		idByte: make([]byte, 2),
+		conn:   conn,
+		room:   room,
+		send:   make(chan []byte),
 	}
+	client.idByte[0] = byte(id & 0xff)
+	client.idByte[1] = byte(id >> 8)
+
+	return client, err
 }
 
 // Run is provides backend synchronize goroutine.
@@ -34,8 +39,13 @@ func (c *ClientWebsocket) Run() {
 }
 
 // GetID is getter for id
-func (c *ClientWebsocket) GetID() []byte {
+func (c *ClientWebsocket) GetID() int {
 	return c.id
+}
+
+// GetIDByte is getter for idByte
+func (c *ClientWebsocket) GetIDByte() []byte {
+	return c.idByte
 }
 
 // Send is enqueue outbound messages
@@ -61,7 +71,7 @@ func (c *ClientWebsocket) SendToOtherClients(message []byte) {
 
 // CloseConnection is disconnect and unregister client
 func (c *ClientWebsocket) CloseConnection() {
-	message := append(c.id, exitConnection)
+	message := append(c.idByte, exitConnection)
 	c.SendToOtherClients(message)
 	c.room.Unregister(c)
 	if err := c.conn.Close(); err != nil && err.Error() != "use of closed network connection" {
