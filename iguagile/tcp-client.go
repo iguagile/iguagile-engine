@@ -15,7 +15,7 @@ type ClientTCP struct {
 }
 
 // NewClientTCP is ClientTCP constructed.
-func NewClientTCP(room *Room, conn *net.TCPConn) (*ClientTCP,  error){
+func NewClientTCP(room *Room, conn *net.TCPConn) (*ClientTCP, error) {
 	id, err := room.generator.Generate()
 
 	client := &ClientTCP{
