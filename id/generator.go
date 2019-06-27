@@ -2,32 +2,39 @@ package id
 
 import (
 	"errors"
-	"math"
 	"sync"
 )
 
 // Generator generate a 16bit id.
 type Generator struct {
 	mutex *sync.Mutex
-	used  [1 << 16]bool
-	next  uint16
-	count int
+	used  []bool
+	next  uint
+	count uint
+	size  uint
 }
 
 // NewGenerator is Generator constructed.
-func NewGenerator() *Generator {
+func NewGenerator(size uint) *Generator {
 	return &Generator{
 		mutex: &sync.Mutex{},
+		used:  make([]bool, size),
+		size:  size,
 	}
 }
 
 // Generate a new id
 func (g *Generator) Generate() (int, error) {
-	if g.count >= math.MaxInt16 {
-		return 0, errors.New("id is exhausted")
-	}
 	g.mutex.Lock()
 	for {
+		if g.count >= g.size {
+			return 0, errors.New("id is exhausted")
+		}
+
+		if g.next >= g.size {
+			g.next = 0
+		}
+
 		if !g.used[g.next] {
 			id := g.next
 			g.used[id] = true
