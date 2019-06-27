@@ -7,10 +7,10 @@ import (
 )
 
 func TestGenerateID(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(math.MaxInt16)
 	used := make([]bool, 1<<16)
 	m := &sync.Mutex{}
-	for i := 0; i < math.MaxUint16; i++ {
+	for i := 0; i < math.MaxInt16; i++ {
 		id, err := gen.Generate()
 		if err != nil {
 			t.Error(err)
