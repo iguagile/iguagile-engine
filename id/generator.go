@@ -28,6 +28,7 @@ func (g *Generator) Generate() (int, error) {
 	g.mutex.Lock()
 	for {
 		if g.count >= g.size {
+			g.mutex.Unlock()
 			return 0, errors.New("id is exhausted")
 		}
 
