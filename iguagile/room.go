@@ -2,6 +2,7 @@ package iguagile
 
 import (
 	"log"
+	"math"
 	"os"
 	"time"
 
@@ -30,7 +31,7 @@ func NewRoom(serverID int, store Store) *Room {
 		id:        roomID,
 		clients:   make(map[Client]bool),
 		buffer:    make(map[*[]byte]Client),
-		generator: id.NewGenerator(),
+		generator: id.NewGenerator(math.MaxInt16),
 		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }
