@@ -5,55 +5,66 @@ import (
 	"sync"
 )
 
-// Generator generate a 16bit id.
+// Generator generate a id.
 type Generator struct {
 	mutex *sync.Mutex
-	used  []bool
-	next  uint
-	count uint
-	size  uint
+
+	// allocatedID is slice to judgement if id is allocated.
+	allocatedID []bool
+
+	// nextTryID is the number to try next when allocate id.
+	nextTryID uint
+
+	// allocatedIDCount is amount of currently allocated id.
+	allocatedIDCount uint
+
+	// maxSize is the maximum value of allocatable id.
+	maxSize uint
 }
 
 // NewGenerator is Generator constructed.
-func NewGenerator(size uint) *Generator {
+func NewGenerator(maxSize uint) *Generator {
 	return &Generator{
-		mutex: &sync.Mutex{},
-		used:  make([]bool, size),
-		size:  size,
+		mutex:       &sync.Mutex{},
+		allocatedID: make([]bool, maxSize),
+		maxSize:     maxSize,
 	}
 }
 
 // Generate a new id
 func (g *Generator) Generate() (int, error) {
 	g.mutex.Lock()
+	defer g.mutex.Unlock()
 	for {
-		if g.count >= g.size {
-			g.mutex.Unlock()
+		if g.allocatedIDCount >= g.maxSize {
 			return 0, errors.New("id is exhausted")
 		}
 
-		if g.next >= g.size {
-			g.next = 0
+		// Set nextTryID to 0 when nextTryID is greater than maxSize
+		if g.nextTryID >= g.maxSize {
+			g.nextTryID = 0
 		}
 
-		if !g.used[g.next] {
-			id := g.next
-			g.used[id] = true
-			g.next++
-			g.count++
-			g.mutex.Unlock()
+		// Allocate and return nextTryID when nextTryID is not yet allocated
+		if !g.allocatedID[g.nextTryID] {
+			id := g.nextTryID
+			g.allocatedID[id] = true
+			g.nextTryID++
+			g.allocatedIDCount++
 			return int(id), nil
 		}
-		g.next++
+
+		// When nextTryID was assigned, increment nextTryID and try allocate id again.
+		g.nextTryID++
 	}
 }
 
 // Free a used id
 func (g *Generator) Free(id int) {
 	g.mutex.Lock()
-	if g.used[id] {
-		g.used[id] = false
-		g.count--
+	if g.allocatedID[id] {
+		g.allocatedID[id] = false
+		g.allocatedIDCount--
 	}
 	g.mutex.Unlock()
 }
