@@ -25,7 +25,8 @@ type Generator struct {
 // NewGenerator is Generator constructed.
 func NewGenerator(maxSize uint) *Generator {
 	return &Generator{
-		mutex:       &sync.Mutex{},
+		mutex: &sync.Mutex{},
+		// time complexity is small because there is no need to search because id is an index
 		allocatedID: make([]bool, maxSize),
 		maxSize:     maxSize,
 	}
