@@ -56,7 +56,7 @@ func (g *Generator) Generate() (int, error) {
 			g.allocatedID[id] = true
 			g.nextTryID++
 			g.allocatedIDCount++
-			return int(id), nil
+			return id, nil
 		}
 
 		// When nextTryID was assigned, increment nextTryID and try allocate id again.
