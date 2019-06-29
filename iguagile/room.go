@@ -27,11 +27,16 @@ func NewRoom(serverID int, store Store) *Room {
 		log.Fatal(err)
 	}
 
+	gen, err := id.NewGenerator(math.MaxInt16)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &Room{
 		id:        roomID,
 		clients:   make(map[Client]bool),
 		buffer:    make(map[*[]byte]Client),
-		generator: id.NewGenerator(math.MaxInt16),
+		generator: gen,
 		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }

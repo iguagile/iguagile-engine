@@ -13,23 +13,27 @@ type Generator struct {
 	allocatedID []bool
 
 	// nextTryID is the number to try next when allocate id.
-	nextTryID uint
+	nextTryID int
 
 	// allocatedIDCount is amount of currently allocated id.
-	allocatedIDCount uint
+	allocatedIDCount int
 
 	// maxSize is the maximum value of allocatable id.
-	maxSize uint
+	maxSize int
 }
 
 // NewGenerator is Generator constructed.
-func NewGenerator(maxSize uint) *Generator {
+func NewGenerator(maxSize int) (*Generator, error) {
+	if maxSize <= 0 {
+		return nil, errors.New("argument is negative number")
+	}
+
 	return &Generator{
 		mutex: &sync.Mutex{},
 		// time complexity is small because there is no need to search because id is an index
 		allocatedID: make([]bool, maxSize),
 		maxSize:     maxSize,
-	}
+	}, nil
 }
 
 // Generate a new id
