@@ -3,28 +3,32 @@ package iguagile
 import (
 	"fmt"
 	"net"
-
-	"github.com/google/uuid"
 )
 
 // ClientTCP is a middleman between the tcp connection and the room.
 type ClientTCP struct {
-	id   []byte
-	conn *net.TCPConn
-	room *Room
-	send chan []byte
+	id     int
+	idByte []byte
+	conn   *net.TCPConn
+	room   *Room
+	send   chan []byte
 }
 
 // NewClientTCP is ClientTCP constructed.
-func NewClientTCP(room *Room, conn *net.TCPConn) *ClientTCP {
-	uid := uuid.Must(uuid.NewUUID())
+func NewClientTCP(room *Room, conn *net.TCPConn) (*ClientTCP, error) {
+	id, err := room.generator.Generate()
 
-	return &ClientTCP{
-		id:   uid[:],
-		conn: conn,
-		room: room,
-		send: make(chan []byte),
+	client := &ClientTCP{
+		id:     id,
+		idByte: make([]byte, 2),
+		conn:   conn,
+		room:   room,
+		send:   make(chan []byte),
 	}
+	client.idByte[0] = byte(id & 0xff)
+	client.idByte[1] = byte(id >> 8)
+
+	return client, err
 }
 
 // Run is provides backend synchronize goroutine.
@@ -71,8 +75,13 @@ func (c *ClientTCP) Run() {
 }
 
 // GetID is getter for id
-func (c *ClientTCP) GetID() []byte {
+func (c *ClientTCP) GetID() int {
 	return c.id
+}
+
+// GetIDByte is getter for idByte
+func (c *ClientTCP) GetIDByte() []byte {
+	return c.idByte
 }
 
 // Send is enqueue outbound messages
@@ -98,7 +107,7 @@ func (c *ClientTCP) SendToOtherClients(message []byte) {
 
 // CloseConnection is disconnect and unregister client
 func (c *ClientTCP) CloseConnection() {
-	message := append(c.id, exitConnection)
+	message := append(c.idByte, exitConnection)
 	c.SendToOtherClients(message)
 	c.room.Unregister(c)
 	if err := c.conn.Close(); err != nil {

@@ -3,8 +3,6 @@ package data
 import (
 	"reflect"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestInbound(t *testing.T) {
@@ -53,31 +51,30 @@ func TestInbound(t *testing.T) {
 }
 
 func TestOutbound(t *testing.T) {
-	tUUID, err := uuid.MustParse("dabc30c6-440d-43ee-86a6-7c7e374fdd19").MarshalBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
+	cid := make([]byte, 2)
+	cid[0] = 1
+	cid[1] = 2
 
 	testData := []struct {
 		send []byte
 		want BinaryData
 	}{
-		{append(tUUID, append([]byte{2}, []byte("hello")...)...),
+		{append(cid, append([]byte{2}, []byte("hello")...)...),
 			BinaryData{
 				Traffic:     Outbound,
-				UUID:        tUUID,
+				ID:          cid,
 				MessageType: byte(2),
 				Payload:     []byte("hello")},
 		},
-		{append(tUUID, append([]byte{NewConnect}, []byte("MSG")...)...), BinaryData{
+		{append(cid, append([]byte{NewConnect}, []byte("MSG")...)...), BinaryData{
 			Traffic:     Outbound,
-			UUID:        tUUID,
+			ID:          cid,
 			MessageType: byte(NewConnect),
 			Payload:     []byte("MSG")},
 		},
-		{append(tUUID, append([]byte{ExitConnect}, []byte("HOGE")...)...), BinaryData{
+		{append(cid, append([]byte{ExitConnect}, []byte("HOGE")...)...), BinaryData{
 			Traffic:     Outbound,
-			UUID:        tUUID,
+			ID:          cid,
 			MessageType: byte(ExitConnect),
 			Payload:     []byte("HOGE")},
 		},
@@ -94,7 +91,7 @@ func TestOutbound(t *testing.T) {
 		if !reflect.DeepEqual(d.MessageType, v.want.MessageType) {
 			t.Errorf("missmatch MessageType get: %v , want: %v", d.Payload, v.want.Payload)
 		}
-		if !reflect.DeepEqual(d.UUID, v.want.UUID) {
+		if !reflect.DeepEqual(d.ID, v.want.ID) {
 			t.Errorf("missmatch UUID get: %v , want: %v", d.Target, v.want.Target)
 		}
 		if !reflect.DeepEqual(d.Traffic, v.want.Traffic) {

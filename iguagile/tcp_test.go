@@ -8,7 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/iguagile/iguagile-engine/data"
 )
 
@@ -122,18 +121,12 @@ OUTER:
 
 		switch bin.MessageType {
 		case data.NewConnect:
-			id, err := uuid.FromBytes(bin.UUID)
-			if err != nil {
-				t.Error(err)
-			}
-			t.Logf("new client %s", id)
+			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
+			t.Logf("new client %x", id)
 			continue OUTER
 		case data.ExitConnect:
-			id, err := uuid.FromBytes(bin.UUID)
-			if err != nil {
-				t.Error(err)
-			}
-			t.Logf("client exit %s", id)
+			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
+			t.Logf("client exit %x", id)
 			continue OUTER
 		default:
 			t.Logf("%s\n", bin.Payload)

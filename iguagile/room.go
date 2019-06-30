@@ -2,19 +2,22 @@ package iguagile
 
 import (
 	"log"
+	"math"
 	"os"
 	"time"
 
 	"github.com/iguagile/iguagile-engine/data"
+	"github.com/iguagile/iguagile-engine/id"
 )
 
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
-	id      int
-	clients map[Client]bool
-	buffer  map[*[]byte]Client
-	log     *log.Logger
+	id        int
+	clients   map[Client]bool
+	buffer    map[*[]byte]Client
+	generator *id.Generator
+	log       *log.Logger
 }
 
 // NewRoom is Room constructed.
@@ -24,11 +27,17 @@ func NewRoom(serverID int, store Store) *Room {
 		log.Fatal(err)
 	}
 
+	gen, err := id.NewGenerator(math.MaxInt16)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &Room{
-		id:      roomID,
-		clients: make(map[Client]bool),
-		buffer:  make(map[*[]byte]Client),
-		log:     log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
+		id:        roomID,
+		clients:   make(map[Client]bool),
+		buffer:    make(map[*[]byte]Client),
+		generator: gen,
+		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }
 
@@ -63,7 +72,7 @@ const (
 // Register requests from the clients.
 func (r *Room) Register(client Client) {
 	go client.Run()
-	message := append(client.GetID(), newConnection)
+	message := append(client.GetIDByte(), newConnection)
 	client.SendToOtherClients(message)
 	r.clients[client] = true
 	for msg := range r.buffer {
@@ -74,11 +83,13 @@ func (r *Room) Register(client Client) {
 
 // Unregister requests from clients.
 func (r *Room) Unregister(client Client) {
+	cid := client.GetID()
 	for message, c := range r.buffer {
 		if c == client {
 			delete(r.buffer, message)
 		}
 	}
+	r.generator.Free(cid)
 	delete(r.clients, client)
 }
 
@@ -88,7 +99,7 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	if err != nil {
 		r.log.Println(err)
 	}
-	message := append(append(sender.GetID(), rowData.MessageType), rowData.Payload...)
+	message := append(append(sender.GetIDByte(), rowData.MessageType), rowData.Payload...)
 	if len(message) >= 1<<16 {
 		r.log.Println("too long message")
 		return
