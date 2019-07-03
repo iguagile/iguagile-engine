@@ -114,7 +114,7 @@ OUTER:
 			t.Errorf("data size does not match")
 		}
 
-		bin, err := data.NewBinaryData(buf, data.Outbound)
+		bin, err := data.NewOutBoundData(buf)
 		if err != nil {
 			t.Error(err)
 		}
