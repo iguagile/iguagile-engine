@@ -1,13 +1,14 @@
 package iguagile
 
 import (
+	"os"
 	"testing"
 )
 
 var sid int
 
 func TestCanGenerateServerID(t *testing.T) {
-	var store = NewRedis("localhost:6379")
+	var store = NewRedis(os.Getenv("REDIS_HOST"))
 	defer func() {
 		_ = store.Close()
 	}()
@@ -23,7 +24,7 @@ func TestCanGenerateServerID(t *testing.T) {
 }
 
 func TestCanGenerateRoomID(t *testing.T) {
-	var store = NewRedis("localhost:6379")
+	var store = NewRedis(os.Getenv("REDIS_HOST"))
 	defer func() {
 		_ = store.Close()
 	}()
