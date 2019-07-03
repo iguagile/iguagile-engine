@@ -127,7 +127,7 @@ OUTER:
 			t.Error("support binary message only")
 		}
 
-		bin, err := data.NewBinaryData(p, data.Outbound)
+		bin, err := data.NewOutBoundData(p)
 		if err != nil {
 			t.Error(err)
 		}

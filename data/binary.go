@@ -21,22 +21,22 @@ type BinaryData struct {
 	Payload     []byte
 }
 
-// NewBinaryData return a BinaryData struct parsed and formatted binary.
-func NewBinaryData(b []byte, t int) (BinaryData, error) {
-	p := BinaryData{}
+// NewInBoundData return a BinaryData struct parsed and formatted binary.
+func NewInBoundData(b []byte) (BinaryData, error) {
+	return BinaryData{
+		Traffic:     Inbound,
+		Target:      b[0:1][0],
+		MessageType: b[1:2][0],
+		Payload:     b[2:],
+	}, nil
+}
 
-	switch t {
-	case Inbound: // ref https://github.com/iguagile/iguagile-engine/wiki/protocol#inbound
-		p.Traffic = t
-		p.Target = b[0:1][0]
-		p.MessageType = b[1:2][0]
-		p.Payload = b[2:]
-	case Outbound: // ref: https://github.com/iguagile/iguagile-engine/wiki/protocol#outbound
-		p.Traffic = t
-		p.ID = b[:2]
-		p.MessageType = b[2:3][0]
-		p.Payload = b[3:]
-	}
-
-	return p, nil
+// NewOutBoundData return a BinaryData struct parsed and formatted binary.
+func NewOutBoundData(b []byte) (BinaryData, error) {
+	return BinaryData{
+		Traffic:     Outbound,
+		ID:          b[:2],
+		MessageType: b[2:3][0],
+		Payload:     b[3:],
+	}, nil
 }
