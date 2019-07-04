@@ -95,7 +95,7 @@ func (r *Room) Unregister(client Client) {
 
 // Receive is receive inbound messages from the clients.
 func (r *Room) Receive(sender Client, receivedData []byte) {
-	rowData, err := data.NewBinaryData(receivedData, data.Inbound)
+	rowData, err := data.NewInBoundData(receivedData)
 	if err != nil {
 		r.log.Println(err)
 	}

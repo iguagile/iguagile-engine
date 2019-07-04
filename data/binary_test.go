@@ -31,7 +31,7 @@ func TestInbound(t *testing.T) {
 		},
 	}
 	for _, v := range testData {
-		d, err := NewBinaryData(v.send, Inbound)
+		d, err := NewInBoundData(v.send)
 		if err != nil {
 			t.Error(err)
 		}
@@ -80,7 +80,7 @@ func TestOutbound(t *testing.T) {
 		},
 	}
 	for _, v := range testData {
-		d, err := NewBinaryData(v.send, Outbound)
+		d, err := NewOutBoundData(v.send)
 		if err != nil {
 			t.Error(err)
 		}
