@@ -53,30 +53,8 @@ func (c *ClientWebsocket) Send(message []byte) {
 	c.send <- message
 }
 
-// SendToAllClients is send outbound message to all registered clients
-func (c *ClientWebsocket) SendToAllClients(message []byte) {
-	for client := range c.room.clients {
-		client.Send(message)
-	}
-}
-
-// SendToOtherClients is send outbound message to other registered clients
-func (c *ClientWebsocket) SendToOtherClients(message []byte) {
-	for client := range c.room.clients {
-		if client != c {
-			client.Send(message)
-		}
-	}
-}
-
-// CloseConnection is disconnect and unregister client
-func (c *ClientWebsocket) CloseConnection() {
-	message := append(c.idByte, exitConnection)
-	c.SendToOtherClients(message)
-	c.room.Unregister(c)
-	if err := c.conn.Close(); err != nil && err.Error() != "use of closed network connection" {
-		c.room.log.Println(err)
-	}
+func (c *ClientWebsocket) Close() error {
+	return c.conn.Close()
 }
 
 // Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
@@ -85,7 +63,7 @@ func (c *ClientWebsocket) CloseConnection() {
 
 func (c *ClientWebsocket) readPump() {
 	defer func() {
-		c.CloseConnection()
+		c.room.CloseConnection(c)
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -116,7 +94,7 @@ func (c *ClientWebsocket) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.CloseConnection()
+		c.room.CloseConnection(c)
 	}()
 	for {
 		select {
