@@ -4,9 +4,7 @@ package iguagile
 type Client interface {
 	Run()
 	Send([]byte)
-	SendToAllClients([]byte)
-	SendToOtherClients([]byte)
-	CloseConnection()
 	GetID() int
 	GetIDByte() []byte
+	Close() error
 }

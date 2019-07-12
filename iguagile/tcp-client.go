@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 )
@@ -17,16 +18,16 @@ type ClientTCP struct {
 // NewClientTCP is ClientTCP constructed.
 func NewClientTCP(room *Room, conn *net.TCPConn) (*ClientTCP, error) {
 	id, err := room.generator.Generate()
+	idByte := make([]byte, 2)
+	binary.LittleEndian.PutUint16(idByte, uint16(id))
 
 	client := &ClientTCP{
 		id:     id,
-		idByte: make([]byte, 2),
+		idByte: idByte,
 		conn:   conn,
 		room:   room,
 		send:   make(chan []byte),
 	}
-	client.idByte[0] = byte(id & 0xff)
-	client.idByte[1] = byte(id >> 8)
 
 	return client, err
 }
@@ -40,20 +41,20 @@ func (c *ClientTCP) Run() {
 			_, err := c.conn.Read(sizeBuf)
 			if err != nil {
 				c.room.log.Println(err)
-				c.CloseConnection()
+				c.room.CloseConnection(c)
 				break
 			}
-			size := int(sizeBuf[0]) + int(sizeBuf[1])<<8
+			size := int(binary.LittleEndian.Uint16(sizeBuf))
 			n, err := c.conn.Read(buf[:size])
 			if err != nil {
 				c.room.log.Println(err)
-				c.CloseConnection()
+				c.room.CloseConnection(c)
 				break
 			}
 			if n != size {
 				msg := fmt.Sprintf("data size does not match. ClientID:%v %vbyte %vbyte", c.id, size, n)
 				c.room.log.Println(msg)
-				c.CloseConnection()
+				c.room.CloseConnection(c)
 				break
 			}
 			c.room.Receive(c, buf[:n])
@@ -63,54 +64,35 @@ func (c *ClientTCP) Run() {
 		for {
 			message := <-c.send
 			size := len(message)
-			message = append([]byte{byte(size & 255), byte(size >> 8)}, message...)
+			sizeByte := make([]byte, 2, size+2)
+			binary.LittleEndian.PutUint16(sizeByte, uint16(size))
+			message = append(sizeByte, message...)
 			_, err := c.conn.Write(message)
 			if err != nil {
 				c.room.log.Println(err)
-				c.CloseConnection()
+				c.room.CloseConnection(c)
 				break
 			}
 		}
 	}()
 }
 
-// GetID is getter for id
+// GetID is getter for id.
 func (c *ClientTCP) GetID() int {
 	return c.id
 }
 
-// GetIDByte is getter for idByte
+// GetIDByte is getter for idByte.
 func (c *ClientTCP) GetIDByte() []byte {
 	return c.idByte
 }
 
-// Send is enqueue outbound messages
+// Send is enqueue outbound messages.
 func (c *ClientTCP) Send(message []byte) {
 	c.send <- message
 }
 
-// SendToAllClients is send outbound message to all registered clients
-func (c *ClientTCP) SendToAllClients(message []byte) {
-	for client := range c.room.clients {
-		client.Send(message)
-	}
-}
-
-// SendToOtherClients is send outbound message to other registered clients
-func (c *ClientTCP) SendToOtherClients(message []byte) {
-	for client := range c.room.clients {
-		if client != c {
-			client.Send(message)
-		}
-	}
-}
-
-// CloseConnection is disconnect and unregister client
-func (c *ClientTCP) CloseConnection() {
-	message := append(c.idByte, exitConnection)
-	c.SendToOtherClients(message)
-	c.room.Unregister(c)
-	if err := c.conn.Close(); err != nil {
-		c.room.log.Println(err)
-	}
+// Close closes the connection.
+func (c *ClientTCP) Close() error {
+	return c.conn.Close()
 }

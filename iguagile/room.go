@@ -73,7 +73,7 @@ const (
 func (r *Room) Register(client Client) {
 	go client.Run()
 	message := append(client.GetIDByte(), newConnection)
-	client.SendToOtherClients(message)
+	r.SendToOtherClients(message, client)
 	r.clients[client] = true
 	for msg := range r.buffer {
 		client.Send(*msg)
@@ -106,16 +106,53 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	}
 	switch rowData.Target {
 	case OtherClients:
-		sender.SendToOtherClients(message)
+		r.SendToOtherClients(message, sender)
 	case AllClients:
-		sender.SendToAllClients(message)
+		r.SendToAllClients(message)
 	case OtherClientsBuffered:
-		sender.SendToOtherClients(message)
+		r.SendToOtherClients(message, sender)
 		r.buffer[&message] = sender
 	case AllClientsBuffered:
-		sender.SendToAllClients(message)
+		r.SendToAllClients(message)
 		r.buffer[&message] = sender
 	default:
 		r.log.Println(receivedData)
 	}
+}
+
+// SendToAllClients sends outbound message to all registered clients.
+func (r *Room) SendToAllClients(message []byte) {
+	for client := range r.clients {
+		client.Send(message)
+	}
+}
+
+// SendToOtherClients sends outbound message to other registered clients.
+func (r *Room) SendToOtherClients(message []byte, sender Client) {
+	for client := range r.clients {
+		if client != sender {
+			client.Send(message)
+		}
+	}
+}
+
+// CloseConnection closes the connection and unregisters the client.
+func (r *Room) CloseConnection(client Client) {
+	message := append(client.GetIDByte(), exitConnection)
+	r.SendToOtherClients(message, client)
+	r.Unregister(client)
+	if err := client.Close(); err != nil && err.Error() != "use of closed network connection" {
+		r.log.Println(err)
+	}
+}
+
+// Close closes all client connections
+func (r *Room) Close() error {
+	for client := range r.clients {
+		if err := client.Close(); err != nil {
+			r.log.Println(err)
+		}
+	}
+
+	return nil
 }
