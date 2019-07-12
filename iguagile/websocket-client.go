@@ -74,6 +74,7 @@ func (c *ClientWebsocket) Send(message []byte) {
 	c.send <- message
 }
 
+// Close closes the connection.
 func (c *ClientWebsocket) Close() error {
 	return c.conn.Close()
 }
