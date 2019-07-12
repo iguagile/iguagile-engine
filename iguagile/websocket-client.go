@@ -2,6 +2,7 @@ package iguagile
 
 import (
 	"encoding/binary"
+
 	"github.com/gorilla/websocket"
 )
 
