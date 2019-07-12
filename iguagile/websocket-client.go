@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"encoding/binary"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -18,16 +19,16 @@ type ClientWebsocket struct {
 // NewClientWebsocket is ClientWebsocket constructed.
 func NewClientWebsocket(room *Room, conn *websocket.Conn) (*ClientWebsocket, error) {
 	id, err := room.generator.Generate()
+	idByte := make([]byte, 2)
+	binary.LittleEndian.PutUint16(idByte, uint16(id))
 
 	client := &ClientWebsocket{
 		id:     id,
-		idByte: make([]byte, 2),
+		idByte: idByte,
 		conn:   conn,
 		room:   room,
 		send:   make(chan []byte),
 	}
-	client.idByte[0] = byte(id & 0xff)
-	client.idByte[1] = byte(id >> 8)
 
 	return client, err
 }
