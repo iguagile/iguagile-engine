@@ -134,6 +134,7 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	}
 }
 
+// ReceiveRPC receives rpc to server
 func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 	switch binaryData.MessageType {
 	case instantiate:
@@ -143,6 +144,7 @@ func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 	}
 }
 
+// InstantiateObject instantiates the game object
 func (r *Room) InstantiateObject(sender Client, idByte []byte) {
 	objID := int(binary.LittleEndian.Uint32(idByte))
 	if _, ok := r.objects[objID]; ok {
@@ -158,6 +160,7 @@ func (r *Room) InstantiateObject(sender Client, idByte []byte) {
 	r.SendToAllClients(message)
 }
 
+// DestroyObject destroys the game object
 func (r *Room) DestroyObject(sender Client, idByte []byte) {
 	objID := int(binary.LittleEndian.Uint32(idByte))
 	obj, ok := r.objects[objID]
