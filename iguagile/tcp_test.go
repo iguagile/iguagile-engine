@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"encoding/binary"
 	"log"
 	"net"
 	"os"
@@ -104,7 +105,7 @@ OUTER:
 			t.Errorf("%v", err)
 		}
 
-		size := int(sizeBuf[0]) + int(sizeBuf[1])<<8
+		size := int(binary.LittleEndian.Uint16(sizeBuf))
 		buf := make([]byte, size)
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -121,12 +122,15 @@ OUTER:
 
 		switch bin.MessageType {
 		case data.NewConnect:
-			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
+			id := binary.LittleEndian.Uint16(bin.ID)
 			t.Logf("new client %x", id)
 			continue OUTER
 		case data.ExitConnect:
-			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
+			id := binary.LittleEndian.Uint16(bin.ID)
 			t.Logf("client exit %x", id)
+			continue OUTER
+		case migrateHost:
+			t.Logf("migrate host")
 			continue OUTER
 		default:
 			t.Logf("%s\n", bin.Payload)
@@ -145,7 +149,9 @@ OUTER:
 
 func senderTCP(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, send []byte) {
 	size := len(send)
-	buf := append([]byte{byte(size & 255), byte(size >> 8)}, send...)
+	sizeBuf := make([]byte, 2)
+	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
+	buf := append(sizeBuf, send...)
 	_, err := conn.Write(buf)
 	if err != nil {
 		t.Errorf("%v", err)

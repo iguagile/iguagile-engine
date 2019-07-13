@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"encoding/binary"
 	"log"
 	"net/http"
 	"net/url"
@@ -16,35 +17,37 @@ import (
 
 var uri = url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
 
-func NewServer(t *testing.T) *http.Server {
+func NewServer(t *testing.T) {
 	srv := &http.Server{
 		Addr: uri.Host,
 	}
 
-	go func(t *testing.T) {
-		store := NewRedis(os.Getenv("REDIS_HOST"))
-		serverID, err := store.GenerateServerID()
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer func() {
-			_ = store.Close()
-		}()
-		room := NewRoom(serverID, store)
-		f := func(writer http.ResponseWriter, request *http.Request) {
-			ServeWebsocket(room, writer, request)
-		}
-		srv.Handler = http.HandlerFunc(f)
+	store := NewRedis(os.Getenv("REDIS_HOST"))
+	serverID, err := store.GenerateServerID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		_ = store.Close()
+	}()
+	room := NewRoom(serverID, store)
+	f := func(writer http.ResponseWriter, request *http.Request) {
+		ServeWebsocket(room, writer, request)
+	}
+	srv.Handler = http.HandlerFunc(f)
 
+	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			t.Errorf("%v", err)
 		}
-	}(t)
-
-	return srv
+		_ = srv.Close()
+	}()
 }
 
 func TestConnectionWebsocket(t *testing.T) {
+	NewServer(t)
+	time.Sleep(200 * time.Millisecond)
+
 	testData := []struct {
 		send []byte
 		want []byte
@@ -53,15 +56,6 @@ func TestConnectionWebsocket(t *testing.T) {
 		{append([]byte{OtherClients, Transform}, "agile"...), []byte("agile")},
 		{append([]byte{OtherClients, Transform}, "iguagile"...), []byte("iguagile")},
 	}
-
-	srv := NewServer(t)
-	defer func() {
-		if err := srv.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	time.Sleep(200 * time.Millisecond)
 
 	wsRec, resp, err := websocket.DefaultDialer.Dial(uri.String(), nil)
 	if err != nil {
@@ -100,14 +94,14 @@ func TestConnectionWebsocket(t *testing.T) {
 	// wait senderWebsocket and receiverWebsocket done
 	err = wsSend.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil && err.Error() != "websocket: close 1000 (normal)" {
+	if err != nil {
 		t.Errorf("%v", err)
 	}
 
 	err = wsRec.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 
-	if err != nil && err.Error() != "websocket: close 1000 (normal)" {
+	if err != nil {
 		t.Errorf("%v", err)
 	}
 
@@ -134,12 +128,15 @@ OUTER:
 
 		switch bin.MessageType {
 		case data.NewConnect:
-			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
+			id := binary.LittleEndian.Uint16(bin.ID)
 			t.Logf("new client %x", id)
 			continue OUTER
 		case data.ExitConnect:
-			id := int(bin.ID[0]) | (int(bin.ID[1]) << 8)
+			id := binary.LittleEndian.Uint16(bin.ID)
 			t.Logf("client exit %x", id)
+			continue OUTER
+		case migrateHost:
+			t.Logf("migrate host")
 			continue OUTER
 		default:
 			t.Logf("%s\n", bin.Payload)
