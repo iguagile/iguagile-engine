@@ -61,6 +61,7 @@ const (
 	destroy
 	requestObjectControlAuthority
 	transferObjectControlAuthority
+	migrateHost
 )
 
 const (
@@ -81,6 +82,8 @@ func (r *Room) Register(client Client) {
 
 	if len(r.clients) == 1 {
 		r.host = client
+		message := append(client.GetIDByte(), migrateHost)
+		client.Send(message)
 	}
 }
 
@@ -98,6 +101,8 @@ func (r *Room) Unregister(client Client) {
 	if client == r.host && len(r.clients) > 0 {
 		for c := range r.clients {
 			r.host = c
+			message := append(c.GetIDByte(), migrateHost)
+			c.Send(message)
 			break
 		}
 	}
@@ -147,11 +152,13 @@ func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 		r.RequestObjectControlAuthority(sender, binaryData.Payload)
 	case transferObjectControlAuthority:
 		r.TransferObjectControlAuthority(sender, binaryData.Payload)
+	case migrateHost:
+		r.MigrateHost(sender, binaryData.Payload)
 	default:
 		r.log.Println(binaryData)
 	}
 }
-
+q
 // InstantiateObject instantiates the game object
 func (r *Room) InstantiateObject(sender Client, idByte []byte) {
 	objID := int(binary.LittleEndian.Uint32(idByte))
@@ -219,6 +226,19 @@ func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
 	for client := range r.clients {
 		if client.GetID() == clientID {
 			client.Send(message)
+		}
+	}
+}
+
+// MigrateHost migrates host to the client
+func (r *Room) MigrateHost(sender Client, idByte []byte) {
+	clientID := int(binary.LittleEndian.Uint32(idByte))
+
+	for client := range r.clients {
+		if client.GetID() == clientID {
+			message := append(client.GetIDByte(), migrateHost)
+			client.Send(message)
+			break
 		}
 	}
 }
