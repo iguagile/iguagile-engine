@@ -4,7 +4,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"time"
 
 	"github.com/iguagile/iguagile-engine/data"
 	"github.com/iguagile/iguagile-engine/id"
@@ -18,6 +17,7 @@ type Room struct {
 	buffer    map[*[]byte]Client
 	generator *id.Generator
 	log       *log.Logger
+	host      Client
 }
 
 // NewRoom is Room constructed.
@@ -47,6 +47,7 @@ const (
 	OtherClients
 	AllClientsBuffered
 	OtherClientsBuffered
+	Host
 )
 
 // Message type
@@ -56,17 +57,8 @@ const (
 )
 
 const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
 	// Maximum message size allowed from peer.
-	maxMessageSize = 512
+	maxMessageSize = 1<<16 - 1
 )
 
 // Register requests from the clients.
@@ -79,6 +71,10 @@ func (r *Room) Register(client Client) {
 		client.Send(*msg)
 	}
 	r.buffer[&message] = client
+
+	if len(r.clients) == 1 {
+		r.host = client
+	}
 }
 
 // Unregister requests from clients.
@@ -91,6 +87,13 @@ func (r *Room) Unregister(client Client) {
 	}
 	r.generator.Free(cid)
 	delete(r.clients, client)
+
+	if client == r.host && len(r.clients) > 0 {
+		for c := range r.clients {
+			r.host = c
+			break
+		}
+	}
 }
 
 // Receive is receive inbound messages from the clients.
@@ -99,11 +102,13 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	if err != nil {
 		r.log.Println(err)
 	}
+
 	message := append(append(sender.GetIDByte(), rowData.MessageType), rowData.Payload...)
 	if len(message) >= 1<<16 {
 		r.log.Println("too long message")
 		return
 	}
+
 	switch rowData.Target {
 	case OtherClients:
 		r.SendToOtherClients(message, sender)
@@ -115,6 +120,8 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	case AllClientsBuffered:
 		r.SendToAllClients(message)
 		r.buffer[&message] = sender
+	case Host:
+		r.host.Send(message)
 	default:
 		r.log.Println(receivedData)
 	}
