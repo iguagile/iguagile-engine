@@ -158,7 +158,7 @@ func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 		r.log.Println(binaryData)
 	}
 }
-q
+
 // InstantiateObject instantiates the game object
 func (r *Room) InstantiateObject(sender Client, idByte []byte) {
 	objID := int(binary.LittleEndian.Uint32(idByte))
