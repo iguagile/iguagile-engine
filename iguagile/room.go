@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"encoding/binary"
 	"log"
 	"math"
 	"os"
@@ -15,6 +16,7 @@ type Room struct {
 	id        int
 	clients   map[Client]bool
 	buffer    map[*[]byte]Client
+	objects   map[int]*GameObject
 	generator *id.Generator
 	log       *log.Logger
 	host      Client
@@ -48,12 +50,15 @@ const (
 	AllClientsBuffered
 	OtherClientsBuffered
 	Host
+	Server
 )
 
 // Message type
 const (
 	newConnection = iota
 	exitConnection
+	instantiate
+	destroy
 )
 
 const (
@@ -122,9 +127,52 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 		r.buffer[&message] = sender
 	case Host:
 		r.host.Send(message)
+	case Server:
+		r.ReceiveRPC(sender, &rowData)
 	default:
 		r.log.Println(receivedData)
 	}
+}
+
+func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
+	switch binaryData.MessageType {
+	case instantiate:
+		r.InstantiateObject(sender, binaryData.Payload)
+	case destroy:
+		r.DestroyObject(sender, binaryData.Payload)
+	}
+}
+
+func (r *Room) InstantiateObject(sender Client, idByte []byte) {
+	objID := int(binary.LittleEndian.Uint32(idByte))
+	if _, ok := r.objects[objID]; ok {
+		return
+	}
+
+	r.objects[objID] = &GameObject{
+		owner: sender,
+		id:    objID,
+	}
+
+	message := append(append(sender.GetIDByte(), instantiate), idByte...)
+	r.SendToAllClients(message)
+}
+
+func (r *Room) DestroyObject(sender Client, idByte []byte) {
+	objID := int(binary.LittleEndian.Uint32(idByte))
+	obj, ok := r.objects[objID]
+	if !ok {
+		return
+	}
+
+	if obj.owner != sender {
+		return
+	}
+
+	delete(r.objects, objID)
+
+	message := append(append(sender.GetIDByte(), destroy), idByte...)
+	r.SendToAllClients(message)
 }
 
 // SendToAllClients sends outbound message to all registered clients.
