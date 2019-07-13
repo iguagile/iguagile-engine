@@ -59,6 +59,8 @@ const (
 	exitConnection
 	instantiate
 	destroy
+	requestObjectControlAuthority
+	transferObjectControlAuthority
 )
 
 const (
@@ -141,6 +143,12 @@ func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 		r.InstantiateObject(sender, binaryData.Payload)
 	case destroy:
 		r.DestroyObject(sender, binaryData.Payload)
+	case requestObjectControlAuthority:
+		r.RequestObjectControlAuthority(sender, binaryData.Payload)
+	case transferObjectControlAuthority:
+		r.TransferObjectControlAuthority(sender, binaryData.Payload)
+	default:
+		r.log.Println(binaryData)
 	}
 }
 
@@ -176,6 +184,43 @@ func (r *Room) DestroyObject(sender Client, idByte []byte) {
 
 	message := append(append(sender.GetIDByte(), destroy), idByte...)
 	r.SendToAllClients(message)
+}
+
+// RequestObjectControlAuthority requests control authority of the object to the owner of the object
+func (r *Room) RequestObjectControlAuthority(sender Client, idByte []byte) {
+	objID := int(binary.LittleEndian.Uint32(idByte))
+	obj, ok := r.objects[objID]
+	if !ok {
+		return
+	}
+
+	message := append(append(sender.GetIDByte(), requestObjectControlAuthority), idByte...)
+	obj.owner.Send(message)
+}
+
+// TransferObjectControlAuthority transfers control authority of the object
+func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
+	objIDByte := payload[:4]
+	objID := int(binary.LittleEndian.Uint32(objIDByte))
+
+	clientIDByte := payload[4:8]
+	clientID := int(binary.LittleEndian.Uint32(clientIDByte))
+
+	obj, ok := r.objects[objID]
+	if !ok {
+		return
+	}
+
+	if obj.owner != sender {
+		return
+	}
+
+	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
+	for client := range r.clients {
+		if client.GetID() == clientID {
+			client.Send(message)
+		}
+	}
 }
 
 // SendToAllClients sends outbound message to all registered clients.
