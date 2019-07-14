@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"encoding/binary"
 	"log"
 	"math"
 	"os"
@@ -15,6 +16,7 @@ type Room struct {
 	id        int
 	clients   map[Client]bool
 	buffer    map[*[]byte]Client
+	objects   map[int]*GameObject
 	generator *id.Generator
 	log       *log.Logger
 	host      Client
@@ -48,12 +50,18 @@ const (
 	AllClientsBuffered
 	OtherClientsBuffered
 	Host
+	Server
 )
 
 // Message type
 const (
 	newConnection = iota
 	exitConnection
+	instantiate
+	destroy
+	requestObjectControlAuthority
+	transferObjectControlAuthority
+	migrateHost
 )
 
 const (
@@ -74,6 +82,8 @@ func (r *Room) Register(client Client) {
 
 	if len(r.clients) == 1 {
 		r.host = client
+		message := append(client.GetIDByte(), migrateHost)
+		client.Send(message)
 	}
 }
 
@@ -91,6 +101,8 @@ func (r *Room) Unregister(client Client) {
 	if client == r.host && len(r.clients) > 0 {
 		for c := range r.clients {
 			r.host = c
+			message := append(c.GetIDByte(), migrateHost)
+			c.Send(message)
 			break
 		}
 	}
@@ -122,8 +134,112 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 		r.buffer[&message] = sender
 	case Host:
 		r.host.Send(message)
+	case Server:
+		r.ReceiveRPC(sender, &rowData)
 	default:
 		r.log.Println(receivedData)
+	}
+}
+
+// ReceiveRPC receives rpc to server
+func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
+	switch binaryData.MessageType {
+	case instantiate:
+		r.InstantiateObject(sender, binaryData.Payload)
+	case destroy:
+		r.DestroyObject(sender, binaryData.Payload)
+	case requestObjectControlAuthority:
+		r.RequestObjectControlAuthority(sender, binaryData.Payload)
+	case transferObjectControlAuthority:
+		r.TransferObjectControlAuthority(sender, binaryData.Payload)
+	case migrateHost:
+		r.MigrateHost(sender, binaryData.Payload)
+	default:
+		r.log.Println(binaryData)
+	}
+}
+
+// InstantiateObject instantiates the game object
+func (r *Room) InstantiateObject(sender Client, idByte []byte) {
+	objID := int(binary.LittleEndian.Uint32(idByte))
+	if _, ok := r.objects[objID]; ok {
+		return
+	}
+
+	r.objects[objID] = &GameObject{
+		owner: sender,
+		id:    objID,
+	}
+
+	message := append(append(sender.GetIDByte(), instantiate), idByte...)
+	r.SendToAllClients(message)
+}
+
+// DestroyObject destroys the game object
+func (r *Room) DestroyObject(sender Client, idByte []byte) {
+	objID := int(binary.LittleEndian.Uint32(idByte))
+	obj, ok := r.objects[objID]
+	if !ok {
+		return
+	}
+
+	if obj.owner != sender {
+		return
+	}
+
+	delete(r.objects, objID)
+
+	message := append(append(sender.GetIDByte(), destroy), idByte...)
+	r.SendToAllClients(message)
+}
+
+// RequestObjectControlAuthority requests control authority of the object to the owner of the object
+func (r *Room) RequestObjectControlAuthority(sender Client, idByte []byte) {
+	objID := int(binary.LittleEndian.Uint32(idByte))
+	obj, ok := r.objects[objID]
+	if !ok {
+		return
+	}
+
+	message := append(append(sender.GetIDByte(), requestObjectControlAuthority), idByte...)
+	obj.owner.Send(message)
+}
+
+// TransferObjectControlAuthority transfers control authority of the object
+func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
+	objIDByte := payload[:4]
+	objID := int(binary.LittleEndian.Uint32(objIDByte))
+
+	clientIDByte := payload[4:8]
+	clientID := int(binary.LittleEndian.Uint32(clientIDByte))
+
+	obj, ok := r.objects[objID]
+	if !ok {
+		return
+	}
+
+	if obj.owner != sender {
+		return
+	}
+
+	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
+	for client := range r.clients {
+		if client.GetID() == clientID {
+			client.Send(message)
+		}
+	}
+}
+
+// MigrateHost migrates host to the client
+func (r *Room) MigrateHost(sender Client, idByte []byte) {
+	clientID := int(binary.LittleEndian.Uint32(idByte))
+
+	for client := range r.clients {
+		if client.GetID() == clientID {
+			message := append(client.GetIDByte(), migrateHost)
+			client.Send(message)
+			break
+		}
 	}
 }
 
