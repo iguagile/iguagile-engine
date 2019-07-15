@@ -62,6 +62,7 @@ const (
 	requestObjectControlAuthority
 	transferObjectControlAuthority
 	migrateHost
+	register
 )
 
 const (
@@ -72,6 +73,7 @@ const (
 // Register requests from the clients.
 func (r *Room) Register(client Client) {
 	go client.Run()
+	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
 	r.SendToOtherClients(message, client)
 	r.clients[client] = true

@@ -132,6 +132,10 @@ OUTER:
 		case migrateHost:
 			t.Logf("migrate host")
 			continue OUTER
+		case register:
+			id := binary.LittleEndian.Uint16(bin.ID)
+			t.Logf("registered %x", id)
+			continue OUTER
 		default:
 			t.Logf("%s\n", bin.Payload)
 			if !reflect.DeepEqual(want, bin.Payload) {
