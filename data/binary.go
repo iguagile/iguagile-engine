@@ -1,5 +1,7 @@
 package data
 
+import "errors"
+
 // Traffic
 const (
 	Inbound = iota
@@ -21,9 +23,16 @@ type BinaryData struct {
 	Payload     []byte
 }
 
+// ErrInvalidDataFormat is when given unknown data.
+var ErrInvalidDataFormat = errors.New("invalid data length")
+
 // NewInBoundData return a BinaryData struct parsed and formatted binary.
-func NewInBoundData(b []byte) (BinaryData, error) {
-	return BinaryData{
+func NewInBoundData(b []byte) (*BinaryData, error) {
+	if len(b) < 2 {
+		return &BinaryData{}, ErrInvalidDataFormat
+	}
+
+	return &BinaryData{
 		Traffic:     Inbound,
 		Target:      b[0:1][0],
 		MessageType: b[1:2][0],
@@ -32,8 +41,12 @@ func NewInBoundData(b []byte) (BinaryData, error) {
 }
 
 // NewOutBoundData return a BinaryData struct parsed and formatted binary.
-func NewOutBoundData(b []byte) (BinaryData, error) {
-	return BinaryData{
+func NewOutBoundData(b []byte) (*BinaryData, error) {
+	if len(b) < 3 {
+		return &BinaryData{}, ErrInvalidDataFormat
+	}
+
+	return &BinaryData{
 		Traffic:     Outbound,
 		ID:          b[:2],
 		MessageType: b[2:3][0],

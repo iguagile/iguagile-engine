@@ -111,19 +111,21 @@ func (r *Room) Unregister(client Client) {
 }
 
 // Receive is receive inbound messages from the clients.
-func (r *Room) Receive(sender Client, receivedData []byte) {
-	rowData, err := data.NewInBoundData(receivedData)
+func (r *Room) Receive(sender Client, receivedData []byte) (err error) {
+	inbound, err := data.NewInBoundData(receivedData)
 	if err != nil {
-		r.log.Println(err)
+		return err
 	}
 
-	message := append(append(sender.GetIDByte(), rowData.MessageType), rowData.Payload...)
+	message := append(append(sender.GetIDByte(), inbound.MessageType), inbound.Payload...)
 	if len(message) >= 1<<16 {
 		r.log.Println("too long message")
-		return
+		// TODO Decide how to use it in practice
+		// return error or logging
+		return nil
 	}
 
-	switch rowData.Target {
+	switch inbound.Target {
 	case OtherClients:
 		r.SendToOtherClients(message, sender)
 	case AllClients:
@@ -137,10 +139,12 @@ func (r *Room) Receive(sender Client, receivedData []byte) {
 	case Host:
 		r.host.Send(message)
 	case Server:
-		r.ReceiveRPC(sender, &rowData)
+		r.ReceiveRPC(sender, inbound)
 	default:
 		r.log.Println(receivedData)
 	}
+
+	return nil
 }
 
 // ReceiveRPC receives rpc to server

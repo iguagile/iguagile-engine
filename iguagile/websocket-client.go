@@ -43,7 +43,11 @@ func (c *ClientWebsocket) Run() {
 				break
 			}
 
-			c.room.Receive(c, message)
+			if err := c.room.Receive(c, message); err != nil {
+				c.room.log.Println(err)
+				c.room.CloseConnection(c)
+			}
+
 		}
 	}()
 
