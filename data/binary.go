@@ -27,12 +27,12 @@ type BinaryData struct {
 var ErrInvalidDataFormat = errors.New("invalid data length")
 
 // NewInBoundData return a BinaryData struct parsed and formatted binary.
-func NewInBoundData(b []byte) (BinaryData, error) {
+func NewInBoundData(b []byte) (*BinaryData, error) {
 	if len(b) < 2 {
-		return BinaryData{}, ErrInvalidDataFormat
+		return &BinaryData{}, ErrInvalidDataFormat
 	}
 
-	return BinaryData{
+	return &BinaryData{
 		Traffic:     Inbound,
 		Target:      b[0:1][0],
 		MessageType: b[1:2][0],
@@ -41,12 +41,12 @@ func NewInBoundData(b []byte) (BinaryData, error) {
 }
 
 // NewOutBoundData return a BinaryData struct parsed and formatted binary.
-func NewOutBoundData(b []byte) (BinaryData, error) {
+func NewOutBoundData(b []byte) (*BinaryData, error) {
 	if len(b) < 3 {
-		return BinaryData{}, ErrInvalidDataFormat
+		return &BinaryData{}, ErrInvalidDataFormat
 	}
 
-	return BinaryData{
+	return &BinaryData{
 		Traffic:     Outbound,
 		ID:          b[:2],
 		MessageType: b[2:3][0],

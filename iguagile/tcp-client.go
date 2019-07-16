@@ -57,7 +57,13 @@ func (c *ClientTCP) Run() {
 				c.room.CloseConnection(c)
 				break
 			}
-			c.room.Receive(c, buf[:n])
+
+			if err = c.room.Receive(c, buf[:n]); err != nil {
+				c.room.log.Println(err)
+				c.room.CloseConnection(c)
+				break
+			}
+
 		}
 	}()
 	go func() {
