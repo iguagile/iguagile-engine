@@ -23,13 +23,13 @@ type BinaryData struct {
 	Payload     []byte
 }
 
-// InvalidDataFormat is when given unknown data.
-var InvalidDataFormat = errors.New("invalid data length")
+// ErrInvalidDataFormat is when given unknown data.
+var ErrInvalidDataFormat = errors.New("invalid data length")
 
 // NewInBoundData return a BinaryData struct parsed and formatted binary.
 func NewInBoundData(b []byte) (BinaryData, error) {
 	if len(b) < 2 {
-		return BinaryData{}, InvalidDataFormat
+		return BinaryData{}, ErrInvalidDataFormat
 	}
 
 	return BinaryData{
@@ -43,7 +43,7 @@ func NewInBoundData(b []byte) (BinaryData, error) {
 // NewOutBoundData return a BinaryData struct parsed and formatted binary.
 func NewOutBoundData(b []byte) (BinaryData, error) {
 	if len(b) < 3 {
-		return BinaryData{}, InvalidDataFormat
+		return BinaryData{}, ErrInvalidDataFormat
 	}
 
 	return BinaryData{
