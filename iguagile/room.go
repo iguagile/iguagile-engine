@@ -147,7 +147,7 @@ func (r *Room) Receive(sender Client, receivedData []byte) (err error) {
 	return nil
 }
 
-// ReceiveRPC receives rpc to server
+// ReceiveRPC receives rpc to server.
 func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 	switch binaryData.MessageType {
 	case instantiate:
@@ -165,8 +165,13 @@ func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 	}
 }
 
-// InstantiateObject instantiates the game object
+// InstantiateObject instantiates the game object.
 func (r *Room) InstantiateObject(sender Client, idByte []byte) {
+	if len(idByte) != 4 {
+		r.log.Println("invalid object id")
+		return
+	}
+
 	objID := int(binary.LittleEndian.Uint32(idByte))
 	if _, ok := r.objects[objID]; ok {
 		return
@@ -181,8 +186,13 @@ func (r *Room) InstantiateObject(sender Client, idByte []byte) {
 	r.SendToAllClients(message)
 }
 
-// DestroyObject destroys the game object
+// DestroyObject destroys the game object.
 func (r *Room) DestroyObject(sender Client, idByte []byte) {
+	if len(idByte) != 4 {
+		r.log.Println("invalid object id")
+		return
+	}
+
 	objID := int(binary.LittleEndian.Uint32(idByte))
 	obj, ok := r.objects[objID]
 	if !ok {
@@ -199,8 +209,13 @@ func (r *Room) DestroyObject(sender Client, idByte []byte) {
 	r.SendToAllClients(message)
 }
 
-// RequestObjectControlAuthority requests control authority of the object to the owner of the object
+// RequestObjectControlAuthority requests control authority of the object to the owner of the object.
 func (r *Room) RequestObjectControlAuthority(sender Client, idByte []byte) {
+	if len(idByte) != 4 {
+		r.log.Println("invalid payload length")
+		return
+	}
+
 	objID := int(binary.LittleEndian.Uint32(idByte))
 	obj, ok := r.objects[objID]
 	if !ok {
@@ -211,8 +226,13 @@ func (r *Room) RequestObjectControlAuthority(sender Client, idByte []byte) {
 	obj.owner.Send(message)
 }
 
-// TransferObjectControlAuthority transfers control authority of the object
+// TransferObjectControlAuthority transfers control authority of the object.
 func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
+	if len(payload) != 8 {
+		r.log.Println("invalid payload length")
+		return
+	}
+
 	objIDByte := payload[:4]
 	objID := int(binary.LittleEndian.Uint32(objIDByte))
 
@@ -236,8 +256,13 @@ func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
 	}
 }
 
-// MigrateHost migrates host to the client
+// MigrateHost migrates host to the client.
 func (r *Room) MigrateHost(sender Client, idByte []byte) {
+	if len(idByte) != 4 {
+		r.log.Println("invalid payload length")
+		return
+	}
+
 	clientID := int(binary.LittleEndian.Uint32(idByte))
 
 	for client := range r.clients {
@@ -275,7 +300,7 @@ func (r *Room) CloseConnection(client Client) {
 	}
 }
 
-// Close closes all client connections
+// Close closes all client connections.
 func (r *Room) Close() error {
 	for client := range r.clients {
 		if err := client.Close(); err != nil {
