@@ -63,17 +63,17 @@ func (c *ClientWebsocket) Run() {
 	}()
 }
 
-// GetID is getter for id
+// GetID is getter for id.
 func (c *ClientWebsocket) GetID() int {
 	return c.id
 }
 
-// GetIDByte is getter for idByte
+// GetIDByte is getter for idByte.
 func (c *ClientWebsocket) GetIDByte() []byte {
 	return c.idByte
 }
 
-// Send is enqueue outbound messages
+// Send is enqueue outbound messages.
 func (c *ClientWebsocket) Send(message []byte) {
 	c.send <- message
 }
