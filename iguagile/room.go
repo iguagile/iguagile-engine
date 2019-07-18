@@ -14,7 +14,7 @@ import (
 // clients.
 type Room struct {
 	id        int
-	clients   map[Client]bool
+	clients   map[int]Client
 	buffer    map[*[]byte]Client
 	objects   map[int]*GameObject
 	generator *id.Generator
@@ -36,7 +36,7 @@ func NewRoom(serverID int, store Store) *Room {
 
 	return &Room{
 		id:        roomID,
-		clients:   make(map[Client]bool),
+		clients:   make(map[int]Client),
 		buffer:    make(map[*[]byte]Client),
 		generator: gen,
 		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
@@ -76,7 +76,7 @@ func (r *Room) Register(client Client) {
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
 	r.SendToOtherClients(message, client)
-	r.clients[client] = true
+	r.clients[client.GetID()] = client
 	for msg := range r.buffer {
 		client.Send(*msg)
 	}
@@ -98,10 +98,10 @@ func (r *Room) Unregister(client Client) {
 		}
 	}
 	r.generator.Free(cid)
-	delete(r.clients, client)
+	delete(r.clients, client.GetID())
 
 	if client == r.host && len(r.clients) > 0 {
-		for c := range r.clients {
+		for _, c := range r.clients {
 			r.host = c
 			message := append(c.GetIDByte(), migrateHost)
 			c.Send(message)
@@ -249,8 +249,8 @@ func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
 	}
 
 	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
-	for client := range r.clients {
-		if client.GetID() == clientID {
+	for cid, client := range r.clients {
+		if cid == clientID {
 			client.Send(message)
 		}
 	}
@@ -265,8 +265,8 @@ func (r *Room) MigrateHost(sender Client, idByte []byte) {
 
 	clientID := int(binary.LittleEndian.Uint32(idByte))
 
-	for client := range r.clients {
-		if client.GetID() == clientID {
+	for cid, client := range r.clients {
+		if cid == clientID {
 			message := append(client.GetIDByte(), migrateHost)
 			client.Send(message)
 			break
@@ -276,14 +276,14 @@ func (r *Room) MigrateHost(sender Client, idByte []byte) {
 
 // SendToAllClients sends outbound message to all registered clients.
 func (r *Room) SendToAllClients(message []byte) {
-	for client := range r.clients {
+	for _, client := range r.clients {
 		client.Send(message)
 	}
 }
 
 // SendToOtherClients sends outbound message to other registered clients.
 func (r *Room) SendToOtherClients(message []byte, sender Client) {
-	for client := range r.clients {
+	for _, client := range r.clients {
 		if client != sender {
 			client.Send(message)
 		}
@@ -302,7 +302,7 @@ func (r *Room) CloseConnection(client Client) {
 
 // Close closes all client connections.
 func (r *Room) Close() error {
-	for client := range r.clients {
+	for _, client := range r.clients {
 		if err := client.Close(); err != nil {
 			r.log.Println(err)
 		}
