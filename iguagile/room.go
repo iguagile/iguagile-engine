@@ -239,6 +239,10 @@ func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
 	clientIDByte := payload[4:8]
 	clientID := int(binary.LittleEndian.Uint32(clientIDByte))
 
+	if _, ok := r.clients[clientID]; !ok {
+		return
+	}
+
 	obj, ok := r.objects[objID]
 	if !ok {
 		return
