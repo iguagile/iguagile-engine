@@ -29,7 +29,7 @@ var ErrInvalidDataFormat = errors.New("invalid data length")
 // NewInBoundData return a BinaryData struct parsed and formatted binary.
 func NewInBoundData(b []byte) (*BinaryData, error) {
 	if len(b) < 2 {
-		return &BinaryData{}, ErrInvalidDataFormat
+		return nil, ErrInvalidDataFormat
 	}
 
 	return &BinaryData{
@@ -43,7 +43,7 @@ func NewInBoundData(b []byte) (*BinaryData, error) {
 // NewOutBoundData return a BinaryData struct parsed and formatted binary.
 func NewOutBoundData(b []byte) (*BinaryData, error) {
 	if len(b) < 3 {
-		return &BinaryData{}, ErrInvalidDataFormat
+		return nil, ErrInvalidDataFormat
 	}
 
 	return &BinaryData{
