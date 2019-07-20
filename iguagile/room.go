@@ -14,12 +14,12 @@ import (
 // clients.
 type Room struct {
 	id        int
-	clients   map[int]Client
-	buffer    map[*[]byte]Client
+	clients   map[int]*Client
+	buffer    map[*[]byte]*Client
 	objects   map[int]*GameObject
 	generator *id.Generator
 	log       *log.Logger
-	host      Client
+	host      *Client
 }
 
 // NewRoom is Room constructed.
@@ -36,8 +36,8 @@ func NewRoom(serverID int, store Store) *Room {
 
 	return &Room{
 		id:        roomID,
-		clients:   make(map[int]Client),
-		buffer:    make(map[*[]byte]Client),
+		clients:   make(map[int]*Client),
+		buffer:    make(map[*[]byte]*Client),
 		generator: gen,
 		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
@@ -71,7 +71,7 @@ const (
 )
 
 // Register requests from the clients.
-func (r *Room) Register(client Client) {
+func (r *Room) Register(client *Client) {
 	go client.Run()
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
@@ -90,7 +90,7 @@ func (r *Room) Register(client Client) {
 }
 
 // Unregister requests from clients.
-func (r *Room) Unregister(client Client) {
+func (r *Room) Unregister(client *Client) {
 	cid := client.GetID()
 	for message, c := range r.buffer {
 		if c == client {
@@ -111,7 +111,7 @@ func (r *Room) Unregister(client Client) {
 }
 
 // Receive is receive inbound messages from the clients.
-func (r *Room) Receive(sender Client, receivedData []byte) (err error) {
+func (r *Room) Receive(sender *Client, receivedData []byte) (err error) {
 	inbound, err := data.NewInBoundData(receivedData)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (r *Room) Receive(sender Client, receivedData []byte) (err error) {
 }
 
 // ReceiveRPC receives rpc to server.
-func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
+func (r *Room) ReceiveRPC(sender *Client, binaryData *data.BinaryData) {
 	switch binaryData.MessageType {
 	case instantiate:
 		r.InstantiateObject(sender, binaryData.Payload)
@@ -166,7 +166,7 @@ func (r *Room) ReceiveRPC(sender Client, binaryData *data.BinaryData) {
 }
 
 // InstantiateObject instantiates the game object.
-func (r *Room) InstantiateObject(sender Client, idByte []byte) {
+func (r *Room) InstantiateObject(sender *Client, idByte []byte) {
 	if len(idByte) != 4 {
 		r.log.Println("invalid object id")
 		return
@@ -187,7 +187,7 @@ func (r *Room) InstantiateObject(sender Client, idByte []byte) {
 }
 
 // DestroyObject destroys the game object.
-func (r *Room) DestroyObject(sender Client, idByte []byte) {
+func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 	if len(idByte) != 4 {
 		r.log.Println("invalid object id")
 		return
@@ -210,7 +210,7 @@ func (r *Room) DestroyObject(sender Client, idByte []byte) {
 }
 
 // RequestObjectControlAuthority requests control authority of the object to the owner of the object.
-func (r *Room) RequestObjectControlAuthority(sender Client, idByte []byte) {
+func (r *Room) RequestObjectControlAuthority(sender *Client, idByte []byte) {
 	if len(idByte) != 4 {
 		r.log.Println("invalid payload length")
 		return
@@ -227,7 +227,7 @@ func (r *Room) RequestObjectControlAuthority(sender Client, idByte []byte) {
 }
 
 // TransferObjectControlAuthority transfers control authority of the object.
-func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
+func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	if len(payload) != 8 {
 		r.log.Println("invalid payload length")
 		return
@@ -261,7 +261,7 @@ func (r *Room) TransferObjectControlAuthority(sender Client, payload []byte) {
 }
 
 // MigrateHost migrates host to the client.
-func (r *Room) MigrateHost(sender Client, idByte []byte) {
+func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 	if len(idByte) != 4 {
 		r.log.Println("invalid payload length")
 		return
@@ -286,7 +286,7 @@ func (r *Room) SendToAllClients(message []byte) {
 }
 
 // SendToOtherClients sends outbound message to other registered clients.
-func (r *Room) SendToOtherClients(message []byte, sender Client) {
+func (r *Room) SendToOtherClients(message []byte, sender *Client) {
 	for _, client := range r.clients {
 		if client != sender {
 			client.Send(message)
@@ -295,7 +295,7 @@ func (r *Room) SendToOtherClients(message []byte, sender Client) {
 }
 
 // CloseConnection closes the connection and unregisters the client.
-func (r *Room) CloseConnection(client Client) {
+func (r *Room) CloseConnection(client *Client) {
 	message := append(client.GetIDByte(), exitConnection)
 	r.SendToOtherClients(message, client)
 	r.Unregister(client)
