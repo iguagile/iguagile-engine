@@ -20,7 +20,7 @@ func ServeWebsocket(room *Room, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := NewClientWebsocket(room, conn)
+	client, err := NewClient(room, &ConnWebsocket{conn: conn})
 	if err != nil {
 		room.log.Println(err)
 		return
