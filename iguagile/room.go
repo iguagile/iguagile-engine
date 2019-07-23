@@ -82,6 +82,13 @@ func (r *Room) Register(client *Client) {
 	}
 	r.buffer[&message] = client
 
+	for _, obj := range r.objects {
+		objectIDByte := make([]byte, 2)
+		binary.LittleEndian.PutUint16(objectIDByte, uint16(obj.id))
+		msg := append(append(obj.owner.GetIDByte(), instantiate), objectIDByte...)
+		client.Send(msg)
+	}
+
 	if len(r.clients) == 1 {
 		r.host = client
 		message := append(client.GetIDByte(), migrateHost)
