@@ -67,7 +67,7 @@ const (
 
 const (
 	// Maximum message size allowed from peer.
-	maxMessageSize = 1<<16 - 1
+	maxMessageSize = math.MaxUint16
 )
 
 // Register requests from the clients.
@@ -118,7 +118,7 @@ func (r *Room) Unregister(client *Client) {
 }
 
 // Receive is receive inbound messages from the clients.
-func (r *Room) Receive(sender *Client, receivedData []byte) (err error) {
+func (r *Room) Receive(sender *Client, receivedData []byte) error {
 	inbound, err := data.NewInBoundData(receivedData)
 	if err != nil {
 		return err
@@ -173,13 +173,13 @@ func (r *Room) ReceiveRPC(sender *Client, binaryData *data.BinaryData) {
 }
 
 // InstantiateObject instantiates the game object.
-func (r *Room) InstantiateObject(sender *Client, idByte []byte) {
-	if len(idByte) != 4 {
-		r.log.Println("invalid object id")
+func (r *Room) InstantiateObject(sender *Client, data []byte) {
+	if len(data) >= 4 {
+		r.log.Println("invalid data length")
 		return
 	}
 
-	objID := int(binary.LittleEndian.Uint32(idByte))
+	objID := int(binary.LittleEndian.Uint32(data))
 	if _, ok := r.objects[objID]; ok {
 		return
 	}
@@ -189,7 +189,7 @@ func (r *Room) InstantiateObject(sender *Client, idByte []byte) {
 		id:    objID,
 	}
 
-	message := append(append(sender.GetIDByte(), instantiate), idByte...)
+	message := append(append(sender.GetIDByte(), instantiate), data...)
 	r.SendToAllClients(message)
 }
 
