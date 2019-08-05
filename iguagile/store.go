@@ -1,7 +1,9 @@
 package iguagile
 
 import (
+	"github.com/iguagile/iguagile-engine/id"
 	"log"
+	"math"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -45,4 +47,35 @@ func NewRedis(hostname string) *Redis {
 
 	}
 	return &Redis{conn}
+}
+
+// DummyStore is a structure for debugging.
+type DummyStore struct {
+	*id.Generator
+}
+
+// GenerateServerID always returns zero and nil.
+// Use only when debugging only one room.
+func (d *DummyStore) GenerateServerID() (int, error) {
+	return 0, nil
+}
+
+// GenerateRoomID generate room id when server id is zero.
+func (d *DummyStore) GenerateRoomID(serverID int) (int, error) {
+	return d.Generate()
+}
+
+// Close is dummy method for implementing Store interface.
+func (d *DummyStore) Close() error {
+	return nil
+}
+
+// NewDummyStore is a constructor of DummyStore.
+func NewDummyStore() (*DummyStore, error) {
+	gen, err := id.NewGenerator(math.MaxInt16)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DummyStore{gen}, nil
 }
