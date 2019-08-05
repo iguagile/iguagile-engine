@@ -38,6 +38,7 @@ func NewRoom(serverID int, store Store) *Room {
 		id:        roomID,
 		clients:   make(map[int]*Client),
 		buffer:    make(map[*[]byte]*Client),
+		objects:   make(map[int]*GameObject),
 		generator: gen,
 		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
@@ -83,9 +84,10 @@ func (r *Room) Register(client *Client) {
 	r.buffer[&message] = client
 
 	for _, obj := range r.objects {
-		objectIDByte := make([]byte, 2)
-		binary.LittleEndian.PutUint16(objectIDByte, uint16(obj.id))
-		msg := append(append(obj.owner.GetIDByte(), instantiate), objectIDByte...)
+		objectIDByte := make([]byte, 4)
+		binary.LittleEndian.PutUint32(objectIDByte, uint32(obj.id))
+		payload := append(objectIDByte, obj.resourcePath...)
+		msg := append(append(obj.owner.GetIDByte(), instantiate), payload...)
 		client.Send(msg)
 	}
 
@@ -174,7 +176,7 @@ func (r *Room) ReceiveRPC(sender *Client, binaryData *data.BinaryData) {
 
 // InstantiateObject instantiates the game object.
 func (r *Room) InstantiateObject(sender *Client, data []byte) {
-	if len(data) >= 4 {
+	if len(data) <= 4 {
 		r.log.Println("invalid data length")
 		return
 	}
@@ -185,8 +187,9 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 	}
 
 	r.objects[objID] = &GameObject{
-		owner: sender,
-		id:    objID,
+		owner:        sender,
+		id:           objID,
+		resourcePath: data[4:],
 	}
 
 	message := append(append(sender.GetIDByte(), instantiate), data...)
