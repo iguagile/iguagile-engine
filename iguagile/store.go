@@ -1,11 +1,11 @@
 package iguagile
 
 import (
-	"github.com/iguagile/iguagile-engine/id"
 	"log"
 	"math"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/iguagile/iguagile-engine/id"
 )
 
 // Store is an interface for connecting to backend storage and storing data.
