@@ -38,6 +38,7 @@ func NewRoom(serverID int, store Store) *Room {
 		id:        roomID,
 		clients:   make(map[int]*Client),
 		buffer:    make(map[*[]byte]*Client),
+		objects:   make(map[int]*GameObject),
 		generator: gen,
 		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
@@ -174,7 +175,7 @@ func (r *Room) ReceiveRPC(sender *Client, binaryData *data.BinaryData) {
 
 // InstantiateObject instantiates the game object.
 func (r *Room) InstantiateObject(sender *Client, data []byte) {
-	if len(data) >= 4 {
+	if len(data) <= 4 {
 		r.log.Println("invalid data length")
 		return
 	}
