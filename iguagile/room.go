@@ -122,6 +122,17 @@ func (r *Room) Unregister(client *Client) {
 			break
 		}
 	}
+
+	for _, obj := range r.objects {
+		if obj.owner == client {
+			switch obj.lifetime {
+			case roomExist:
+				r.transferObjectControlAuthority(obj, r.host)
+			case ownerExist:
+				r.destroyObject(obj)
+			}
+		}
+	}
 }
 
 // Receive is receive inbound messages from the clients.
