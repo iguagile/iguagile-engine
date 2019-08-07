@@ -219,6 +219,14 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 	r.SendToAllClients(message)
 }
 
+func (r *Room) destroyObject(gameObject *GameObject) {
+	delete(r.objects, gameObject.id)
+	idByte := make([]byte, 4)
+	binary.LittleEndian.PutUint32(idByte, uint32(gameObject.id))
+	message := append(append(gameObject.owner.GetIDByte(), destroy), idByte...)
+	r.SendToAllClients(message)
+}
+
 // RequestObjectControlAuthority requests control authority of the object to the owner of the object.
 func (r *Room) RequestObjectControlAuthority(sender *Client, idByte []byte) {
 	if len(idByte) != 4 {
