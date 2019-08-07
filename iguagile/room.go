@@ -109,6 +109,11 @@ func (r *Room) Unregister(client *Client) {
 	r.generator.Free(cid)
 	delete(r.clients, client.GetID())
 
+	if len(r.clients) == 0 {
+		r.objects = make(map[int]*GameObject)
+		return
+	}
+
 	if client == r.host && len(r.clients) > 0 {
 		for _, c := range r.clients {
 			r.host = c
