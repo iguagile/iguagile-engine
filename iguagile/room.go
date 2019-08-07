@@ -189,7 +189,8 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 	r.objects[objID] = &GameObject{
 		owner:        sender,
 		id:           objID,
-		resourcePath: data[4:],
+		lifetime:     data[4],
+		resourcePath: data[5:],
 	}
 
 	message := append(append(sender.GetIDByte(), instantiate), data...)
