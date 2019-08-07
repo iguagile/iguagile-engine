@@ -279,6 +279,14 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	}
 }
 
+func (r *Room) transferObjectControlAuthority(gameObject *GameObject, client *Client) {
+	idByte := make([]byte, 4)
+	binary.LittleEndian.PutUint32(idByte, uint32(gameObject.id))
+	message := append(append(gameObject.owner.GetIDByte(), transferObjectControlAuthority), idByte...)
+	client.Send(message)
+	gameObject.owner = client
+}
+
 // MigrateHost migrates host to the client.
 func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 	if len(idByte) != 4 {
