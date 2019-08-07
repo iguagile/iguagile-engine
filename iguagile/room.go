@@ -275,6 +275,7 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	for cid, client := range r.clients {
 		if cid == clientID {
 			client.Send(message)
+			obj.owner = client
 		}
 	}
 }
