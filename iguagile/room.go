@@ -109,12 +109,28 @@ func (r *Room) Unregister(client *Client) {
 	r.generator.Free(cid)
 	delete(r.clients, client.GetID())
 
+	if len(r.clients) == 0 {
+		r.objects = make(map[int]*GameObject)
+		return
+	}
+
 	if client == r.host && len(r.clients) > 0 {
 		for _, c := range r.clients {
 			r.host = c
 			message := append(c.GetIDByte(), migrateHost)
 			c.Send(message)
 			break
+		}
+	}
+
+	for _, obj := range r.objects {
+		if obj.owner == client {
+			switch obj.lifetime {
+			case roomExist:
+				r.transferObjectControlAuthority(obj, r.host)
+			case ownerExist:
+				r.destroyObject(obj)
+			}
 		}
 	}
 }
@@ -189,7 +205,8 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 	r.objects[objID] = &GameObject{
 		owner:        sender,
 		id:           objID,
-		resourcePath: data[4:],
+		lifetime:     data[4],
+		resourcePath: data[5:],
 	}
 
 	message := append(append(sender.GetIDByte(), instantiate), data...)
@@ -216,6 +233,14 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 	delete(r.objects, objID)
 
 	message := append(append(sender.GetIDByte(), destroy), idByte...)
+	r.SendToAllClients(message)
+}
+
+func (r *Room) destroyObject(gameObject *GameObject) {
+	delete(r.objects, gameObject.id)
+	idByte := make([]byte, 4)
+	binary.LittleEndian.PutUint32(idByte, uint32(gameObject.id))
+	message := append(append(gameObject.owner.GetIDByte(), destroy), idByte...)
 	r.SendToAllClients(message)
 }
 
@@ -266,8 +291,17 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	for cid, client := range r.clients {
 		if cid == clientID {
 			client.Send(message)
+			obj.owner = client
 		}
 	}
+}
+
+func (r *Room) transferObjectControlAuthority(gameObject *GameObject, client *Client) {
+	idByte := make([]byte, 4)
+	binary.LittleEndian.PutUint32(idByte, uint32(gameObject.id))
+	message := append(append(gameObject.owner.GetIDByte(), transferObjectControlAuthority), idByte...)
+	client.Send(message)
+	gameObject.owner = client
 }
 
 // MigrateHost migrates host to the client.
