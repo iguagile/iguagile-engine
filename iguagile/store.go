@@ -46,3 +46,27 @@ func NewRedis(hostname string) *Redis {
 	}
 	return &Redis{conn}
 }
+
+// DummyStore is a structure for debugging.
+type DummyStore struct{}
+
+// GenerateServerID always returns zero and nil.
+func (d *DummyStore) GenerateServerID() (int, error) {
+	return 0, nil
+}
+
+// GenerateRoomID always returns zero and nil.
+// Use only when debugging only one room.
+func (d *DummyStore) GenerateRoomID(serverID int) (int, error) {
+	return 0, nil
+}
+
+// Close is dummy method for implementing Store interface.
+func (d *DummyStore) Close() error {
+	return nil
+}
+
+// NewDummyStore is a constructor of DummyStore.
+func NewDummyStore() (*DummyStore, error) {
+	return &DummyStore{}, nil
+}

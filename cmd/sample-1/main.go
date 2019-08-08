@@ -4,13 +4,15 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 
 	"github.com/iguagile/iguagile-engine/iguagile"
 )
 
 func main() {
-	store := iguagile.NewRedis(os.Getenv("REDIS_HOST"))
+	store, err := iguagile.NewDummyStore()
+	if err != nil {
+		log.Fatal(err)
+	}
 	serverID, err := store.GenerateServerID()
 	if err != nil {
 		log.Fatal(err)
@@ -22,6 +24,7 @@ func main() {
 	}
 
 	listen, err := net.ListenTCP("tcp", tcpAddr)
+	log.Println("ListenTCP")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,6 +41,7 @@ func main() {
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		iguagile.ServeWebsocket(room, writer, request)
 	})
+	log.Println("ListenWebsocket")
 	if err := http.ListenAndServe(":5000", nil); err != nil {
 		log.Fatal(err)
 	}
