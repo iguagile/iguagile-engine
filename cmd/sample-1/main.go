@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -25,7 +24,7 @@ func main() {
 	}
 
 	listen, err := net.ListenTCP("tcp", tcpAddr)
-	fmt.Println("ListenTCP")
+	log.Println("ListenTCP")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +41,7 @@ func main() {
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		iguagile.ServeWebsocket(room, writer, request)
 	})
-	fmt.Println("ListenWebsocket")
+	log.Println("ListenWebsocket")
 	if err := http.ListenAndServe(":5000", nil); err != nil {
 		log.Fatal(err)
 	}
