@@ -197,19 +197,21 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 		return
 	}
 
-	objID := int(binary.LittleEndian.Uint32(data))
+	objIDByte := data[:4]
+	objID := int(binary.LittleEndian.Uint32(objIDByte))
 	if _, ok := r.objects[objID]; ok {
 		return
 	}
 
+	resourcePath := data[5:]
 	r.objects[objID] = &GameObject{
 		owner:        sender,
 		id:           objID,
 		lifetime:     data[4],
-		resourcePath: data[5:],
+		resourcePath: resourcePath,
 	}
 
-	message := append(append(sender.GetIDByte(), instantiate), data...)
+	message := append(append(append(sender.GetIDByte(), instantiate), objIDByte...), resourcePath...)
 	r.SendToAllClients(message)
 }
 
