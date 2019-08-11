@@ -64,6 +64,8 @@ const (
 	transferObjectControlAuthority
 	migrateHost
 	register
+	transform
+	rpc
 )
 
 const (
