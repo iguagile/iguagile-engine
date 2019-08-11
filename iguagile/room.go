@@ -16,6 +16,7 @@ import (
 type Room struct {
 	id          int
 	clients     map[int]*Client
+	clientsLock *sync.Mutex
 	buffer      map[*[]byte]*Client
 	objects     map[int]*GameObject
 	objectsLock *sync.Mutex
@@ -39,6 +40,7 @@ func NewRoom(serverID int, store Store) *Room {
 	return &Room{
 		id:          roomID,
 		clients:     make(map[int]*Client),
+		clientsLock: &sync.Mutex{},
 		buffer:      make(map[*[]byte]*Client),
 		objects:     make(map[int]*GameObject),
 		objectsLock: &sync.Mutex{},
@@ -78,6 +80,9 @@ const (
 
 // Register requests from the clients.
 func (r *Room) Register(client *Client) {
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
+
 	go client.Run()
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
@@ -107,6 +112,9 @@ func (r *Room) Register(client *Client) {
 
 // Unregister requests from clients.
 func (r *Room) Unregister(client *Client) {
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
+
 	cid := client.GetID()
 	for message, c := range r.buffer {
 		if c == client {
