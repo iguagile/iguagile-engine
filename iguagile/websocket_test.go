@@ -15,6 +15,11 @@ import (
 	"github.com/iguagile/iguagile-engine/data"
 )
 
+const (
+	RPC       = 2
+	Transform = 3
+)
+
 var uri = url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
 
 func NewServer(t *testing.T) {
