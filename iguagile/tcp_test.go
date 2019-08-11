@@ -131,8 +131,8 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			t.Error(err)
 		}
 
-		size = int(binary.LittleEndian.Uint16(sizeBuf))
-		buf = make([]byte, size)
+		size := int(binary.LittleEndian.Uint16(sizeBuf))
+		buf := make([]byte, size)
 		if _, err := c.conn.Read(buf); err != nil {
 			t.Error(err)
 		}
@@ -162,7 +162,7 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			c.isHost = true
 		case transform:
 			objectID := binary.LittleEndian.Uint32(buf[3:])
-			if !c.objects[objectID] {
+			if objectID == c.myObjectID {
 				t.Errorf("invalid object id %v", buf)
 			}
 		case rpc:
