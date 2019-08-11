@@ -148,8 +148,6 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			objectID := binary.LittleEndian.Uint32(buf[3:])
 			if clientID == c.clientID {
 				wg.Done()
-				c.myObjectID = objectID
-				binary.LittleEndian.PutUint32(c.myObjectIDByte, objectID)
 			} else {
 				c.objects[objectID] = true
 			}
