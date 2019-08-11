@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sync"
 
 	"github.com/iguagile/iguagile-engine/data"
 	"github.com/iguagile/iguagile-engine/id"
@@ -13,13 +14,14 @@ import (
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
-	id        int
-	clients   map[int]*Client
-	buffer    map[*[]byte]*Client
-	objects   map[int]*GameObject
-	generator *id.Generator
-	log       *log.Logger
-	host      *Client
+	id          int
+	clients     map[int]*Client
+	buffer      map[*[]byte]*Client
+	objects     map[int]*GameObject
+	objectsLock *sync.Mutex
+	generator   *id.Generator
+	log         *log.Logger
+	host        *Client
 }
 
 // NewRoom is Room constructed.
@@ -35,12 +37,13 @@ func NewRoom(serverID int, store Store) *Room {
 	}
 
 	return &Room{
-		id:        roomID,
-		clients:   make(map[int]*Client),
-		buffer:    make(map[*[]byte]*Client),
-		objects:   make(map[int]*GameObject),
-		generator: gen,
-		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
+		id:          roomID,
+		clients:     make(map[int]*Client),
+		buffer:      make(map[*[]byte]*Client),
+		objects:     make(map[int]*GameObject),
+		objectsLock: &sync.Mutex{},
+		generator:   gen,
+		log:         log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }
 
@@ -85,6 +88,8 @@ func (r *Room) Register(client *Client) {
 	}
 	r.buffer[&message] = client
 
+	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
 	for _, obj := range r.objects {
 		objectIDByte := make([]byte, 4)
 		binary.LittleEndian.PutUint32(objectIDByte, uint32(obj.id))
@@ -111,6 +116,8 @@ func (r *Room) Unregister(client *Client) {
 	r.generator.Free(cid)
 	delete(r.clients, client.GetID())
 
+	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
 	if len(r.clients) == 0 {
 		r.objects = make(map[int]*GameObject)
 		return
@@ -201,11 +208,14 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 
 	objIDByte := data[:4]
 	objID := int(binary.LittleEndian.Uint32(objIDByte))
+	resourcePath := data[5:]
+
+	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
 	if _, ok := r.objects[objID]; ok {
 		return
 	}
 
-	resourcePath := data[5:]
 	r.objects[objID] = &GameObject{
 		owner:        sender,
 		id:           objID,
@@ -225,6 +235,9 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 	}
 
 	objID := int(binary.LittleEndian.Uint32(idByte))
+
+	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
 	obj, ok := r.objects[objID]
 	if !ok {
 		return
