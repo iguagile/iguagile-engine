@@ -5,11 +5,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"reflect"
 	"sync"
 	"testing"
-
-	"github.com/iguagile/iguagile-engine/data"
 )
 
 const host = "127.0.0.1:4000"
@@ -41,124 +38,162 @@ func Listen(t *testing.T) {
 	}()
 }
 
-const (
-	RPC       = 2
-	Transform = 3
-)
+type testClient struct {
+	conn           *net.TCPConn
+	isHost         bool
+	clientID       uint32
+	clientIDByte   []byte
+	otherClients   map[uint32]bool
+	myObjectID     uint32
+	myObjectIDByte []byte
+	objects        map[uint32]bool
+}
 
-func TestConnectionTCP(t *testing.T) {
-	testData := []struct {
-		send []byte
-		want []byte
-	}{
-		{append([]byte{OtherClients, RPC}, "iguana"...), []byte("iguana")},
-		{append([]byte{OtherClients, Transform}, "agile"...), []byte("agile")},
+func newTestClient(conn *net.TCPConn) *testClient {
+	return &testClient{
+		conn:           conn,
+		clientID:       0,
+		clientIDByte:   make([]byte, 2),
+		objects:        make(map[uint32]bool),
+		myObjectID:     0,
+		myObjectIDByte: make([]byte, 4),
+		otherClients:   make(map[uint32]bool),
+	}
+}
+
+func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
+	sizeBuf := make([]byte, 2)
+	if _, err := c.conn.Read(sizeBuf); err != nil {
+		t.Error(err)
 	}
 
+	size := int(binary.LittleEndian.Uint16(sizeBuf))
+	if size != 3 {
+		t.Errorf("invalid length %v", sizeBuf)
+	}
+	buf := make([]byte, size)
+	if _, err := c.conn.Read(buf); err != nil {
+		t.Error(err)
+	}
+
+	if buf[2] != register {
+		t.Errorf("invalid message type %v", buf)
+	}
+
+	c.clientID = uint32(binary.LittleEndian.Uint16(buf[:2])) << 16
+	c.myObjectID = c.clientID | 1
+	binary.LittleEndian.PutUint32(c.myObjectIDByte, c.myObjectID)
+	message := append(append([]byte{Server, instantiate}, c.myObjectIDByte...), []byte("iguana")...)
+	size = len(message)
+	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
+	message = append(sizeBuf, message...)
+	if _, err := c.conn.Write(message); err != nil {
+		t.Error(err)
+	}
+
+	transformMessage := append([]byte{OtherClients, transform}, c.myObjectIDByte...)
+	size = len(transformMessage)
+	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
+	transformMessage = append(sizeBuf, transformMessage...)
+	rpcMessage := append([]byte{OtherClients, rpc}, []byte("iguagile")...)
+	size = len(rpcMessage)
+	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
+	rpcMessage = append(sizeBuf, rpcMessage...)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		wg.Wait()
+		for i := 0; i < 100; i++ {
+			if _, err := c.conn.Write(transformMessage); err != nil {
+				t.Error(err)
+			}
+		}
+
+		for i := 0; i < 100; i++ {
+			if _, err := c.conn.Write(rpcMessage); err != nil {
+				t.Error(err)
+			}
+		}
+
+		message := append([]byte{Server, destroy}, c.myObjectIDByte...)
+		size := len(message)
+		sizeBuf := make([]byte, 2)
+		binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
+		message = append(sizeBuf, message...)
+		if _, err := c.conn.Write(message); err != nil {
+			t.Error(err)
+		}
+
+		waitGroup.Done()
+	}()
+	for {
+		if _, err := c.conn.Read(sizeBuf); err != nil {
+			t.Error(err)
+		}
+
+		size = int(binary.LittleEndian.Uint16(sizeBuf))
+		buf = make([]byte, size)
+		if _, err := c.conn.Read(buf); err != nil {
+			t.Error(err)
+		}
+
+		clientID := uint32(binary.LittleEndian.Uint16(buf)) << 16
+		messageType := buf[2]
+		switch messageType {
+		case newConnection:
+			c.otherClients[clientID] = true
+		case exitConnection:
+			delete(c.otherClients, clientID)
+		case instantiate:
+			objectID := binary.LittleEndian.Uint32(buf[3:])
+			if clientID == c.clientID {
+				wg.Done()
+				c.myObjectID = objectID
+				binary.LittleEndian.PutUint32(c.myObjectIDByte, objectID)
+			} else {
+				c.objects[objectID] = true
+			}
+		case destroy:
+			objectID := binary.LittleEndian.Uint32(buf[3:])
+			if objectID != c.myObjectID {
+				delete(c.objects, objectID)
+			}
+		case migrateHost:
+			c.isHost = true
+		case transform:
+			objectID := binary.LittleEndian.Uint32(buf[3:])
+			if !c.objects[objectID] {
+				t.Errorf("invalid object id %v", buf)
+			}
+		case rpc:
+			if string(buf[3:]) != "iguagile" {
+				t.Errorf("invalid rpc data %v", buf)
+			}
+		default:
+			t.Errorf("invalid message type %v", buf)
+		}
+	}
+}
+
+func TestConnectionTCP(t *testing.T) {
 	Listen(t)
+	wg := &sync.WaitGroup{}
+	const clients = 3
+	wg.Add(clients)
 
 	addr, err := net.ResolveTCPAddr("tcp", host)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
-	rec, err := net.DialTCP("tcp", nil, addr)
-	if err != nil && err.Error() != "use of closed network connection" {
-		t.Errorf("%v", err)
-	}
-	defer func() {
-		err := rec.Close()
-		if err != nil {
-			t.Log(err)
-		}
-	}()
-
-	send, err := net.DialTCP("tcp", nil, addr)
-	if err != nil && err.Error() != "use of closed network connection" {
-		t.Errorf("%v", err)
-	}
-	defer func() {
-		err := send.Close()
-		if err != nil {
-			t.Log(err)
-		}
-	}()
-
-	for i := 0; i < 10; i++ {
-		for _, v := range testData {
-			wg := &sync.WaitGroup{}
-			wg.Add(2)
-			go receiverTCP(rec, t, wg, v.want)
-			go senderTCP(send, t, wg, v.send)
-			wg.Wait()
-		}
-
-	}
-}
-
-func receiverTCP(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, want []byte) {
-OUTER:
-	for {
-		sizeBuf := make([]byte, 2)
-		_, err := conn.Read(sizeBuf)
-		if err != nil {
-			t.Errorf("%v", err)
-		}
-
-		size := int(binary.LittleEndian.Uint16(sizeBuf))
-		buf := make([]byte, size)
-		n, err := conn.Read(buf)
-		if err != nil {
-			t.Errorf("%v", err)
-		}
-		if n != size {
-			t.Errorf("data size does not match")
-		}
-
-		bin, err := data.NewOutBoundData(buf)
+	for i := 0; i < clients; i++ {
+		conn, err := net.DialTCP("tcp", nil, addr)
 		if err != nil {
 			t.Error(err)
 		}
-
-		switch bin.MessageType {
-		case data.NewConnect:
-			id := binary.LittleEndian.Uint16(bin.ID)
-			t.Logf("new client %x", id)
-			continue OUTER
-		case data.ExitConnect:
-			id := binary.LittleEndian.Uint16(bin.ID)
-			t.Logf("client exit %x", id)
-			continue OUTER
-		case migrateHost:
-			t.Logf("migrate host")
-			continue OUTER
-		case register:
-			id := binary.LittleEndian.Uint16(bin.ID)
-			t.Logf("registered %x", id)
-			continue OUTER
-		default:
-			t.Logf("%s\n", bin.Payload)
-			if !reflect.DeepEqual(want, bin.Payload) {
-				t.Error("miss match message")
-				t.Errorf("%v\n", bin.Payload)
-				t.Errorf("%s\n", bin.Payload)
-			}
-			t.Log(string(bin.Payload))
-
-			wg.Done()
-			break OUTER
-		}
+		client := newTestClient(conn)
+		go client.run(t, wg)
 	}
-}
 
-func senderTCP(conn *net.TCPConn, t *testing.T, wg *sync.WaitGroup, send []byte) {
-	size := len(send)
-	sizeBuf := make([]byte, 2)
-	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
-	buf := append(sizeBuf, send...)
-	_, err := conn.Write(buf)
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-	wg.Done()
+	wg.Wait()
 }
