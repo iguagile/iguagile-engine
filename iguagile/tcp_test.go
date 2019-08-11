@@ -62,6 +62,7 @@ func newTestClient(conn *net.TCPConn) *testClient {
 }
 
 func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
+	//First receive register message and get client id.
 	sizeBuf := make([]byte, 2)
 	if _, err := c.conn.Read(sizeBuf); err != nil {
 		t.Error(err)
@@ -81,52 +82,55 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	}
 
 	c.clientID = uint32(binary.LittleEndian.Uint16(buf[:2])) << 16
+
+	// Set object id and send instantiate message.
 	c.myObjectID = c.clientID | 1
 	binary.LittleEndian.PutUint32(c.myObjectIDByte, c.myObjectID)
 	message := append(append([]byte{Server, instantiate}, c.myObjectIDByte...), []byte("iguana")...)
-	size = len(message)
-	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
-	message = append(sizeBuf, message...)
-	if _, err := c.conn.Write(message); err != nil {
+	if err := c.send(message); err != nil {
 		t.Error(err)
 	}
 
+	// Prepare a transform message and rpc message in advance.
 	transformMessage := append([]byte{OtherClients, transform}, c.myObjectIDByte...)
-	size = len(transformMessage)
-	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
-	transformMessage = append(sizeBuf, transformMessage...)
 	rpcMessage := append([]byte{OtherClients, rpc}, []byte("iguagile")...)
-	size = len(rpcMessage)
-	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
-	rpcMessage = append(sizeBuf, rpcMessage...)
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
+		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
-		for i := 0; i < 100; i++ {
-			if _, err := c.conn.Write(transformMessage); err != nil {
+		for i := 0; i < 1000; i++ {
+			if err := c.send(transformMessage); err != nil {
 				t.Error(err)
 			}
 		}
 
-		for i := 0; i < 100; i++ {
-			if _, err := c.conn.Write(rpcMessage); err != nil {
+		for i := 0; i < 1000; i++ {
+			if err := c.send(rpcMessage); err != nil {
 				t.Error(err)
 			}
 		}
 
-		message := append([]byte{Server, destroy}, c.myObjectIDByte...)
-		size := len(message)
-		sizeBuf := make([]byte, 2)
-		binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
-		message = append(sizeBuf, message...)
-		if _, err := c.conn.Write(message); err != nil {
-			t.Error(err)
+		if c.isHost {
+			for objectID := range c.objects {
+				objectIDByte := make([]byte, 4)
+				binary.LittleEndian.PutUint32(objectIDByte, objectID)
+				message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
+				if err := c.send(message); err != nil {
+					t.Error(err)
+				}
+			}
+			objectIDByte := make([]byte, 4)
+			binary.LittleEndian.PutUint32(objectIDByte, c.myObjectID)
+			message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
+			if err := c.send(message); err != nil {
+				t.Error(err)
+			}
 		}
-
-		waitGroup.Done()
 	}()
 	for {
+		// Start receiving messages.
 		if _, err := c.conn.Read(sizeBuf); err != nil {
 			t.Error(err)
 		}
@@ -139,38 +143,70 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 
 		clientID := uint32(binary.LittleEndian.Uint16(buf)) << 16
 		messageType := buf[2]
+		payload := buf[3:]
 		switch messageType {
 		case newConnection:
 			c.otherClients[clientID] = true
 		case exitConnection:
 			delete(c.otherClients, clientID)
 		case instantiate:
-			objectID := binary.LittleEndian.Uint32(buf[3:])
+			objectID := binary.LittleEndian.Uint32(payload)
 			if clientID == c.clientID {
 				wg.Done()
 			} else {
 				c.objects[objectID] = true
 			}
 		case destroy:
-			objectID := binary.LittleEndian.Uint32(buf[3:])
+			objectID := binary.LittleEndian.Uint32(payload)
 			if objectID != c.myObjectID {
 				delete(c.objects, objectID)
+			} else {
+				waitGroup.Done()
 			}
 		case migrateHost:
 			c.isHost = true
+		case requestObjectControlAuthority:
+			objectID := binary.LittleEndian.Uint32(payload)
+			if objectID != c.myObjectID {
+				t.Errorf("invalid object id %v", buf)
+				break
+			}
+
+			clientIDByte := make([]byte, 4)
+			binary.LittleEndian.PutUint32(clientIDByte, clientID)
+			message := append(append([]byte{Server, transferObjectControlAuthority}, payload...), clientIDByte...)
+			if err := c.send(message); err != nil {
+				t.Error(err)
+			}
+		case transferObjectControlAuthority:
+			message := append([]byte{Server, destroy}, payload...)
+			if err := c.send(message); err != nil {
+				t.Error(err)
+			}
 		case transform:
-			objectID := binary.LittleEndian.Uint32(buf[3:])
+			objectID := binary.LittleEndian.Uint32(payload)
 			if objectID == c.myObjectID {
 				t.Errorf("invalid object id %v", buf)
 			}
 		case rpc:
-			if string(buf[3:]) != "iguagile" {
+			if string(payload) != "iguagile" {
 				t.Errorf("invalid rpc data %v", buf)
 			}
 		default:
 			t.Errorf("invalid message type %v", buf)
 		}
 	}
+}
+
+func (c *testClient) send(message []byte) error {
+	size := len(message)
+	sizeBuf := make([]byte, 2)
+	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
+	data := append(sizeBuf, message...)
+	if _, err := c.conn.Write(data); err != nil {
+		return err
+	}
+	return nil
 }
 
 func TestConnectionTCP(t *testing.T) {
