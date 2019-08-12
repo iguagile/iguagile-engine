@@ -178,6 +178,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			c.isHost = true
 		case requestObjectControlAuthority:
 			objectID := binary.LittleEndian.Uint32(payload)
+			log.Printf("request %v\n", objectID)
 			if objectID != c.myObjectID {
 				t.Errorf("invalid object id %v", buf)
 				break
@@ -190,6 +191,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 				t.Error(err)
 			}
 		case transferObjectControlAuthority:
+			log.Printf("transfer %v\n", binary.LittleEndian.Uint32(payload))
 			message := append([]byte{Server, destroy}, payload...)
 			if err := c.send(message); err != nil {
 				t.Error(err)
