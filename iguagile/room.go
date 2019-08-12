@@ -80,6 +80,7 @@ const (
 
 // Register requests from the clients.
 func (r *Room) Register(client *Client) {
+	r.objectsLock.Lock()
 	go client.writeStart()
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
@@ -92,7 +93,6 @@ func (r *Room) Register(client *Client) {
 	}
 	r.buffer[&message] = client
 
-	r.objectsLock.Lock()
 	defer r.objectsLock.Unlock()
 	for _, obj := range r.objects {
 		objectIDByte := make([]byte, 4)
@@ -300,11 +300,16 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	clientIDByte := payload[4:8]
 	clientID := int(binary.LittleEndian.Uint32(clientIDByte))
 
+	r.clientsLock.Lock()
 	if _, ok := r.clients[clientID]; !ok {
+		r.clientsLock.Unlock()
 		return
 	}
+	r.clientsLock.Unlock()
 
+	r.objectsLock.Lock()
 	obj, ok := r.objects[objID]
+	r.objectsLock.Unlock()
 	if !ok {
 		return
 	}
@@ -314,12 +319,14 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	}
 
 	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
+	r.clientsLock.Lock()
 	for cid, client := range r.clients {
 		if cid == clientID {
 			client.Send(message)
 			obj.owner = client
 		}
 	}
+	r.clientsLock.Unlock()
 }
 
 func (r *Room) transferObjectControlAuthority(gameObject *GameObject, client *Client) {
