@@ -107,13 +107,13 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
 		log.Println("start send message")
-		for i := 0; i < 1000; i++ {
+		for i := 0; i < 100; i++ {
 			if err := c.send(transformMessage); err != nil {
 				t.Error(err)
 			}
 		}
 
-		for i := 0; i < 1000; i++ {
+		for i := 0; i < 100; i++ {
 			if err := c.send(rpcMessage); err != nil {
 				t.Error(err)
 			}
