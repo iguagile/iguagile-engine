@@ -115,7 +115,9 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		}
 
 		if c.isHost {
+			log.Println("before lock")
 			c.objectsLock.Lock()
+			log.Println("after lock")
 			for objectID := range c.objects {
 				objectIDByte := make([]byte, 4)
 				binary.LittleEndian.PutUint32(objectIDByte, objectID)
