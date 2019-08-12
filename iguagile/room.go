@@ -351,6 +351,8 @@ func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 
 // SendToAllClients sends outbound message to all registered clients.
 func (r *Room) SendToAllClients(message []byte) {
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
 	for _, client := range r.clients {
 		client.Send(message)
 	}
@@ -358,6 +360,8 @@ func (r *Room) SendToAllClients(message []byte) {
 
 // SendToOtherClients sends outbound message to other registered clients.
 func (r *Room) SendToOtherClients(message []byte, sender *Client) {
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
 	for _, client := range r.clients {
 		if client != sender {
 			client.Send(message)
