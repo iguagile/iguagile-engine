@@ -63,6 +63,8 @@ func newTestClientTCP(conn *net.TCPConn) *testClientTCP {
 	}
 }
 
+const clients = 3
+
 func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
 	sizeBuf := make([]byte, 2)
@@ -98,7 +100,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	rpcMessage := append([]byte{OtherClients, rpc}, []byte("iguagile")...)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(clients)
 	go func() {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
@@ -159,8 +161,9 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			delete(c.otherClients, clientID)
 		case instantiate:
 			objectID := binary.LittleEndian.Uint32(payload)
+			wg.Done()
 			if clientID == c.clientID {
-				wg.Done()
+
 			} else {
 				c.objectsLock.Lock()
 				c.objects[objectID] = true
@@ -228,7 +231,6 @@ func (c *testClientTCP) send(message []byte) error {
 func TestConnectionTCP(t *testing.T) {
 	Listen(t)
 	wg := &sync.WaitGroup{}
-	const clients = 3
 	wg.Add(clients)
 
 	addr, err := net.ResolveTCPAddr("tcp", host)
