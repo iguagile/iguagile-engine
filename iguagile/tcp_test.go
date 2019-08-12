@@ -171,9 +171,8 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 				c.objectsLock.Unlock()
 			}
 		case destroy:
-			log.Println("destroy")
 			objectID := binary.LittleEndian.Uint32(payload)
-			log.Printf("%v, %v\n", objectID, c.myObjectID)
+			log.Printf("destroy %v, %v\n", objectID, c.myObjectID)
 			if objectID != c.myObjectID {
 				c.objectsLock.Lock()
 				delete(c.objects, objectID)

@@ -113,9 +113,6 @@ func (r *Room) Register(client *Client) {
 
 // Unregister requests from clients.
 func (r *Room) Unregister(client *Client) {
-	r.clientsLock.Lock()
-	defer r.clientsLock.Unlock()
-
 	cid := client.GetID()
 	for message, c := range r.buffer {
 		if c == client {
@@ -123,14 +120,17 @@ func (r *Room) Unregister(client *Client) {
 		}
 	}
 	r.generator.Free(cid)
+
+	r.clientsLock.Lock()
 	delete(r.clients, client.GetID())
+	r.clientsLock.Unlock()
 
 	r.objectsLock.Lock()
-	defer r.objectsLock.Unlock()
 	if len(r.clients) == 0 {
 		r.objects = make(map[int]*GameObject)
 		return
 	}
+	r.objectsLock.Unlock()
 
 	if client == r.host && len(r.clients) > 0 {
 		for _, c := range r.clients {
