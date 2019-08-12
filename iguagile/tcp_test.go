@@ -161,7 +161,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			delete(c.otherClients, clientID)
 		case instantiate:
 			objectID := binary.LittleEndian.Uint32(payload)
-			log.Printf("instantiate %v\n", objectID)
+			log.Printf("instantiate %v %v\n", objectID, c.clientID)
 			wg.Done()
 			if clientID == c.clientID {
 
