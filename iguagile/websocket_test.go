@@ -46,14 +46,11 @@ type testWebsocketConn struct {
 }
 
 func (c *testWebsocketConn) read() ([]byte, error) {
-	log.Printf("before read")
 	_, message, err := c.conn.ReadMessage()
-	log.Printf("after read")
 	return message, err
 }
 
 func (c *testWebsocketConn) write(message []byte) error {
-	log.Printf("write")
 	return c.conn.WriteMessage(websocket.BinaryMessage, message)
 }
 
@@ -61,7 +58,6 @@ func TestConnectionWebsocket(t *testing.T) {
 	ListenWebsocket(t)
 	time.Sleep(time.Second)
 
-	log.Printf("listen websocket")
 	wg := &sync.WaitGroup{}
 	wg.Add(clients)
 
@@ -71,7 +67,6 @@ func TestConnectionWebsocket(t *testing.T) {
 			t.Error(err)
 		}
 		client := newTestClient(&testWebsocketConn{conn})
-		log.Printf("run")
 		go client.run(t, wg)
 	}
 
