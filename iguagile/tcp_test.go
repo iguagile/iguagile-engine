@@ -64,13 +64,11 @@ func newTestClientTCP(conn *net.TCPConn) *testClientTCP {
 }
 
 func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
-	log.Println("run")
 	//First receive register message and get client id.
 	sizeBuf := make([]byte, 2)
 	if _, err := c.conn.Read(sizeBuf); err != nil {
 		t.Error(err)
 	}
-	log.Println("read first sizeBuf")
 
 	size := int(binary.LittleEndian.Uint16(sizeBuf))
 	if size != 3 {
@@ -80,7 +78,6 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	if _, err := c.conn.Read(buf); err != nil {
 		t.Error(err)
 	}
-	log.Println("read first message")
 
 	if buf[2] != register {
 		t.Errorf("invalid message type %v", buf)
@@ -95,7 +92,6 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	if err := c.send(message); err != nil {
 		t.Error(err)
 	}
-	log.Println("send instantiate message")
 
 	// Prepare a transform message and rpc message in advance.
 	transformMessage := append([]byte{OtherClients, transform}, c.myObjectIDByte...)
@@ -106,7 +102,6 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	go func() {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
-		log.Println("start send message")
 		for i := 0; i < 100; i++ {
 			if err := c.send(transformMessage); err != nil {
 				t.Error(err)
@@ -120,7 +115,6 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		}
 
 		if c.isHost {
-			log.Println("start request object control authority")
 			c.objectsLock.Lock()
 			for objectID := range c.objects {
 				objectIDByte := make([]byte, 4)
@@ -142,11 +136,9 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	}()
 	for {
 		// Start receiving messages.
-		log.Println("before read")
 		if _, err := c.conn.Read(sizeBuf); err != nil {
 			t.Error(err)
 		}
-		log.Println("after read")
 
 		size := int(binary.LittleEndian.Uint16(sizeBuf))
 		buf := make([]byte, size)
@@ -159,13 +151,10 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		payload := buf[3:]
 		switch messageType {
 		case newConnection:
-			log.Println("new connection")
 			c.otherClients[clientID] = true
 		case exitConnection:
-			log.Println("exit connection")
 			delete(c.otherClients, clientID)
 		case instantiate:
-			log.Println("instantiate")
 			objectID := binary.LittleEndian.Uint32(payload)
 			if clientID == c.clientID {
 				wg.Done()
@@ -177,6 +166,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		case destroy:
 			log.Println("destroy")
 			objectID := binary.LittleEndian.Uint32(payload)
+			log.Printf("%v, %v\n", objectID, c.myObjectID)
 			if objectID != c.myObjectID {
 				c.objectsLock.Lock()
 				delete(c.objects, objectID)
@@ -185,10 +175,8 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 				waitGroup.Done()
 			}
 		case migrateHost:
-			log.Println("migrate host")
 			c.isHost = true
 		case requestObjectControlAuthority:
-			log.Println("request")
 			objectID := binary.LittleEndian.Uint32(payload)
 			if objectID != c.myObjectID {
 				t.Errorf("invalid object id %v", buf)
@@ -202,19 +190,16 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 				t.Error(err)
 			}
 		case transferObjectControlAuthority:
-			log.Println("transfer")
 			message := append([]byte{Server, destroy}, payload...)
 			if err := c.send(message); err != nil {
 				t.Error(err)
 			}
 		case transform:
-			log.Println("transform")
 			objectID := binary.LittleEndian.Uint32(payload)
 			if objectID == c.myObjectID {
 				t.Errorf("invalid object id %v", buf)
 			}
 		case rpc:
-			log.Println("rpc")
 			if string(payload) != "iguagile" {
 				t.Errorf("invalid rpc data %v", buf)
 			}
@@ -225,23 +210,18 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 }
 
 func (c *testClientTCP) send(message []byte) error {
-	log.Println("send")
 	size := len(message)
 	sizeBuf := make([]byte, 2)
 	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
 	data := append(sizeBuf, message...)
-	log.Println("before write")
 	if _, err := c.conn.Write(data); err != nil {
 		return err
 	}
-	log.Println("after write")
 	return nil
 }
 
 func TestConnectionTCP(t *testing.T) {
-	log.Println("TestConnectionTCP")
 	Listen(t)
-	log.Println("Listen")
 	wg := &sync.WaitGroup{}
 	const clients = 3
 	wg.Add(clients)
@@ -252,7 +232,6 @@ func TestConnectionTCP(t *testing.T) {
 	}
 
 	for i := 0; i < clients; i++ {
-		log.Println("DialTCP")
 		conn, err := net.DialTCP("tcp", nil, addr)
 		if err != nil {
 			t.Error(err)
