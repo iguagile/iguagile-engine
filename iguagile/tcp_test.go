@@ -47,6 +47,7 @@ type testClientTCP struct {
 	myObjectID     uint32
 	myObjectIDByte []byte
 	objects        map[uint32]bool
+	objectsLock    *sync.Mutex
 }
 
 func newTestClientTCP(conn *net.TCPConn) *testClientTCP {
@@ -55,6 +56,7 @@ func newTestClientTCP(conn *net.TCPConn) *testClientTCP {
 		clientID:       0,
 		clientIDByte:   make([]byte, 2),
 		objects:        make(map[uint32]bool),
+		objectsLock:    &sync.Mutex{},
 		myObjectID:     0,
 		myObjectIDByte: make([]byte, 4),
 		otherClients:   make(map[uint32]bool),
@@ -113,6 +115,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		}
 
 		if c.isHost {
+			c.objectsLock.Lock()
 			for objectID := range c.objects {
 				objectIDByte := make([]byte, 4)
 				binary.LittleEndian.PutUint32(objectIDByte, objectID)
@@ -121,6 +124,8 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 					t.Error(err)
 				}
 			}
+			c.objectsLock.Unlock()
+
 			objectIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(objectIDByte, c.myObjectID)
 			message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
@@ -154,12 +159,16 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			if clientID == c.clientID {
 				wg.Done()
 			} else {
+				c.objectsLock.Lock()
 				c.objects[objectID] = true
+				c.objectsLock.Unlock()
 			}
 		case destroy:
 			objectID := binary.LittleEndian.Uint32(payload)
 			if objectID != c.myObjectID {
+				c.objectsLock.Lock()
 				delete(c.objects, objectID)
+				c.objectsLock.Unlock()
 			} else {
 				waitGroup.Done()
 			}
