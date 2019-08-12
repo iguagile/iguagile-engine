@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -58,6 +59,8 @@ func (c *testWebsocketConn) write(message []byte) error {
 
 func TestConnectionWebsocket(t *testing.T) {
 	ListenWebsocket(t)
+	time.Sleep(time.Second)
+
 	log.Printf("listen websocket")
 	wg := &sync.WaitGroup{}
 	wg.Add(clients)
