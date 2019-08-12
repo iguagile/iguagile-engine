@@ -80,14 +80,13 @@ const (
 
 // Register requests from the clients.
 func (r *Room) Register(client *Client) {
-	r.clientsLock.Lock()
-	defer r.clientsLock.Unlock()
-
 	go client.writeStart()
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
 	r.SendToOtherClients(message, client)
+	r.clientsLock.Lock()
 	r.clients[client.GetID()] = client
+	r.clientsLock.Unlock()
 	for msg := range r.buffer {
 		client.Send(*msg)
 	}
