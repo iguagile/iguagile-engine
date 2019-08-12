@@ -15,7 +15,5 @@ jobs:
       - checkout
       - run: go get golang.org/x/tools/cmd/goimports && diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./lib/*")) <(printf "")
       - run: go get -u golang.org/x/lint/golint && golint -set_exit_status ./...
-#      - run: go vet -all -shadowstrict $(go list ./... | grep -v /vendor/ | grep -v /lib/)
-      - run: go get -u golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow && go vet -vettool=$(which shadow)
       - run: go test -v ./...
 
