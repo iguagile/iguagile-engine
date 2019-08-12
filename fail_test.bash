@@ -3,7 +3,7 @@
 cnt=0
 
 export REDIS_HOST=localhost:6379
-go test -v ./iguagile
+go test -v ./iguagile -count=1
 
 res=$?
 cnt=$((cnt++))
