@@ -1,28 +1,19 @@
 package iguagile
 
 import (
-	"encoding/binary"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/iguagile/iguagile-engine/data"
-)
-
-const (
-	RPC       = 2
-	Transform = 3
 )
 
 var uri = url.URL{Scheme: "ws", Host: "127.0.0.1:5000", Path: "/"}
 
-func NewServer(t *testing.T) {
+func ListenWebsocket(t *testing.T) {
 	srv := &http.Server{
 		Addr: uri.Host,
 	}
@@ -49,125 +40,32 @@ func NewServer(t *testing.T) {
 	}()
 }
 
-func TestConnectionWebsocket(t *testing.T) {
-	NewServer(t)
-	time.Sleep(200 * time.Millisecond)
-
-	testData := []struct {
-		send []byte
-		want []byte
-	}{
-		{append([]byte{OtherClients, RPC}, "iguana"...), []byte("iguana")},
-		{append([]byte{OtherClients, Transform}, "agile"...), []byte("agile")},
-		{append([]byte{OtherClients, Transform}, "iguagile"...), []byte("iguagile")},
-	}
-
-	wsRec, resp, err := websocket.DefaultDialer.Dial(uri.String(), nil)
-	if err != nil {
-		t.Errorf("%v", err)
-		t.Errorf("%v", resp)
-	}
-	defer func() {
-		err := wsRec.Close()
-		if err != nil {
-			t.Log(err)
-		}
-	}()
-
-	wsSend, resp, err := websocket.DefaultDialer.Dial(uri.String(), nil)
-	if err != nil {
-		t.Errorf("%v", err)
-		t.Errorf("%v", resp)
-	}
-	defer func() {
-		err := wsSend.Close()
-		if err != nil {
-			t.Log(err)
-		}
-	}()
-
-	// THIS IS TEST CORE.
-	for i := 0; i < 10; i++ {
-		for _, v := range testData {
-			wg := &sync.WaitGroup{}
-			wg.Add(2)
-			go receiverWebsocket(wsRec, t, wg, v.want)
-			go senderWebsocket(wsSend, t, wg, v.send)
-			wg.Wait()
-		}
-	}
-	// wait senderWebsocket and receiverWebsocket done
-	err = wsSend.WriteMessage(websocket.CloseMessage,
-		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-
-	err = wsRec.WriteMessage(websocket.CloseMessage,
-		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-
+type testWebsocketConn struct {
+	conn *websocket.Conn
 }
 
-func receiverWebsocket(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, want []byte) {
+func (c *testWebsocketConn) read() ([]byte, error) {
+	_, message, err := c.conn.ReadMessage()
+	return message, err
+}
 
-OUTER:
-	for {
+func (c *testWebsocketConn) write(message []byte) error {
+	return c.conn.WriteMessage(websocket.BinaryMessage, message)
+}
 
-		messageType, p, err := ws.ReadMessage()
-		if err != nil {
-			t.Errorf("%v", err)
-		}
+func TestConnectionWebsocket(t *testing.T) {
+	ListenWebsocket(t)
+	wg := &sync.WaitGroup{}
+	wg.Add(clients)
 
-		if messageType != websocket.BinaryMessage {
-			t.Error("support binary message only")
-		}
-
-		bin, err := data.NewOutBoundData(p)
+	for i := 0; i < clients; i++ {
+		conn, _, err := websocket.DefaultDialer.Dial(uri.String(), nil)
 		if err != nil {
 			t.Error(err)
 		}
-
-		switch bin.MessageType {
-		case data.NewConnect:
-			id := binary.LittleEndian.Uint16(bin.ID)
-			t.Logf("new client %x", id)
-			continue OUTER
-		case data.ExitConnect:
-			id := binary.LittleEndian.Uint16(bin.ID)
-			t.Logf("client exit %x", id)
-			continue OUTER
-		case migrateHost:
-			t.Logf("migrate host")
-			continue OUTER
-		case register:
-			id := binary.LittleEndian.Uint16(bin.ID)
-			t.Logf("registered %x", id)
-			continue OUTER
-		default:
-			t.Logf("%s\n", bin.Payload)
-			if !reflect.DeepEqual(want, bin.Payload) {
-				t.Error("miss match message")
-				t.Errorf("%v\n", bin.Payload)
-				t.Errorf("%s\n", bin.Payload)
-			}
-			t.Log(string(bin.Payload))
-
-			wg.Done()
-			break OUTER
-		}
-
+		client := newTestClient(&testWebsocketConn{conn})
+		go client.run(t, wg)
 	}
 
-}
-
-func senderWebsocket(ws *websocket.Conn, t *testing.T, wg *sync.WaitGroup, send []byte) {
-	if err := ws.WriteMessage(websocket.BinaryMessage, send); err != nil {
-		t.Errorf("%v", err)
-	}
-
-	wg.Done()
+	wg.Wait()
 }
