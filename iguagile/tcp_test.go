@@ -38,7 +38,7 @@ func Listen(t *testing.T) {
 	}()
 }
 
-type testClient struct {
+type testClientTCP struct {
 	conn           *net.TCPConn
 	isHost         bool
 	clientID       uint32
@@ -49,8 +49,8 @@ type testClient struct {
 	objects        map[uint32]bool
 }
 
-func newTestClient(conn *net.TCPConn) *testClient {
-	return &testClient{
+func newTestClientTCP(conn *net.TCPConn) *testClientTCP {
+	return &testClientTCP{
 		conn:           conn,
 		clientID:       0,
 		clientIDByte:   make([]byte, 2),
@@ -61,7 +61,7 @@ func newTestClient(conn *net.TCPConn) *testClient {
 	}
 }
 
-func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
+func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
 	sizeBuf := make([]byte, 2)
 	if _, err := c.conn.Read(sizeBuf); err != nil {
@@ -198,7 +198,7 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	}
 }
 
-func (c *testClient) send(message []byte) error {
+func (c *testClientTCP) send(message []byte) error {
 	size := len(message)
 	sizeBuf := make([]byte, 2)
 	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
@@ -225,7 +225,7 @@ func TestConnectionTCP(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		client := newTestClient(conn)
+		client := newTestClientTCP(conn)
 		go client.run(t, wg)
 	}
 
