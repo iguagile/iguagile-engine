@@ -128,7 +128,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 
 			objectIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(objectIDByte, c.myObjectID)
-			message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
+			message := append([]byte{Server, destroy}, objectIDByte...)
 			if err := c.send(message); err != nil {
 				t.Error(err)
 			}
