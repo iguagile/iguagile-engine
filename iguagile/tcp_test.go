@@ -119,6 +119,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			for objectID := range c.objects {
 				objectIDByte := make([]byte, 4)
 				binary.LittleEndian.PutUint32(objectIDByte, objectID)
+				log.Printf("send request %v\n", objectID)
 				message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
 				if err := c.send(message); err != nil {
 					t.Error(err)
