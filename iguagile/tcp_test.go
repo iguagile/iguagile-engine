@@ -136,9 +136,11 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	}()
 	for {
 		// Start receiving messages.
+		log.Println("before read")
 		if _, err := c.conn.Read(sizeBuf); err != nil {
 			t.Error(err)
 		}
+		log.Println("after read")
 
 		size := int(binary.LittleEndian.Uint16(sizeBuf))
 		buf := make([]byte, size)
