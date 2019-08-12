@@ -11,7 +11,7 @@ import (
 
 const host = "127.0.0.1:4000"
 
-func Listen(t *testing.T) {
+func ListenTCP(t *testing.T) {
 	store := NewRedis(os.Getenv("REDIS_HOST"))
 	serverID, err := store.GenerateServerID()
 	if err != nil {
@@ -38,8 +38,44 @@ func Listen(t *testing.T) {
 	}()
 }
 
+type testConn interface {
+	read() ([]byte, error)
+	write([]byte) error
+}
+
+type testTCPConn struct {
+	conn *net.TCPConn
+}
+
+func (c *testTCPConn) read() ([]byte, error) {
+	sizeBuf := make([]byte, 2)
+	if _, err := c.conn.Read(sizeBuf); err != nil {
+		return nil, err
+	}
+
+	size := int(binary.LittleEndian.Uint16(sizeBuf))
+
+	buf := make([]byte, size)
+	if _, err := c.conn.Read(buf); err != nil {
+		return nil, err
+	}
+
+	return buf, nil
+}
+
+func (c *testTCPConn) write(message []byte) error {
+	size := len(message)
+	sizeBuf := make([]byte, 2)
+	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
+	data := append(sizeBuf, message...)
+	if _, err := c.conn.Write(data); err != nil {
+		return err
+	}
+	return nil
+}
+
 type testClientTCP struct {
-	conn           *net.TCPConn
+	conn           testConn
 	isHost         bool
 	clientID       uint32
 	clientIDByte   []byte
@@ -50,7 +86,7 @@ type testClientTCP struct {
 	objectsLock    *sync.Mutex
 }
 
-func newTestClientTCP(conn *net.TCPConn) *testClientTCP {
+func newTestClient(conn testConn) *testClientTCP {
 	return &testClientTCP{
 		conn:           conn,
 		clientID:       0,
@@ -67,17 +103,8 @@ const clients = 3
 
 func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
-	sizeBuf := make([]byte, 2)
-	if _, err := c.conn.Read(sizeBuf); err != nil {
-		t.Error(err)
-	}
-
-	size := int(binary.LittleEndian.Uint16(sizeBuf))
-	if size != 3 {
-		t.Errorf("invalid length %v", sizeBuf)
-	}
-	buf := make([]byte, size)
-	if _, err := c.conn.Read(buf); err != nil {
+	buf, err := c.conn.read()
+	if err != nil {
 		t.Error(err)
 	}
 
@@ -91,7 +118,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	c.myObjectID = c.clientID | 1
 	binary.LittleEndian.PutUint32(c.myObjectIDByte, c.myObjectID)
 	message := append(append([]byte{Server, instantiate}, c.myObjectIDByte...), []byte("iguana")...)
-	if err := c.send(message); err != nil {
+	if err := c.conn.write(message); err != nil {
 		t.Error(err)
 	}
 
@@ -105,13 +132,13 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
 		for i := 0; i < 100; i++ {
-			if err := c.send(transformMessage); err != nil {
+			if err := c.conn.write(transformMessage); err != nil {
 				t.Error(err)
 			}
 		}
 
 		for i := 0; i < 100; i++ {
-			if err := c.send(rpcMessage); err != nil {
+			if err := c.conn.write(rpcMessage); err != nil {
 				t.Error(err)
 			}
 		}
@@ -125,7 +152,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 				binary.LittleEndian.PutUint32(objectIDByte, objectID)
 				log.Printf("send request %v\n", objectID)
 				message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
-				if err := c.send(message); err != nil {
+				if err := c.conn.write(message); err != nil {
 					t.Error(err)
 				}
 			}
@@ -134,20 +161,15 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			objectIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(objectIDByte, c.myObjectID)
 			message := append([]byte{Server, destroy}, objectIDByte...)
-			if err := c.send(message); err != nil {
+			if err := c.conn.write(message); err != nil {
 				t.Error(err)
 			}
 		}
 	}()
 	for {
 		// Start receiving messages.
-		if _, err := c.conn.Read(sizeBuf); err != nil {
-			t.Error(err)
-		}
-
-		size := int(binary.LittleEndian.Uint16(sizeBuf))
-		buf := make([]byte, size)
-		if _, err := c.conn.Read(buf); err != nil {
+		buf, err := c.conn.read()
+		if err != nil {
 			t.Error(err)
 		}
 
@@ -163,9 +185,7 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			objectID := binary.LittleEndian.Uint32(payload)
 			log.Printf("instantiate %v %v\n", objectID, c.clientID)
 			wg.Done()
-			if clientID == c.clientID {
-
-			} else {
+			if clientID != c.clientID {
 				c.objectsLock.Lock()
 				c.objects[objectID] = true
 				c.objectsLock.Unlock()
@@ -193,13 +213,13 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			clientIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(clientIDByte, clientID)
 			message := append(append([]byte{Server, transferObjectControlAuthority}, payload...), clientIDByte...)
-			if err := c.send(message); err != nil {
+			if err := c.conn.write(message); err != nil {
 				t.Error(err)
 			}
 		case transferObjectControlAuthority:
 			log.Printf("transfer %v\n", binary.LittleEndian.Uint32(payload))
 			message := append([]byte{Server, destroy}, payload...)
-			if err := c.send(message); err != nil {
+			if err := c.conn.write(message); err != nil {
 				t.Error(err)
 			}
 		case transform:
@@ -217,19 +237,8 @@ func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	}
 }
 
-func (c *testClientTCP) send(message []byte) error {
-	size := len(message)
-	sizeBuf := make([]byte, 2)
-	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
-	data := append(sizeBuf, message...)
-	if _, err := c.conn.Write(data); err != nil {
-		return err
-	}
-	return nil
-}
-
 func TestConnectionTCP(t *testing.T) {
-	Listen(t)
+	ListenTCP(t)
 	wg := &sync.WaitGroup{}
 	wg.Add(clients)
 
@@ -243,7 +252,7 @@ func TestConnectionTCP(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		client := newTestClientTCP(conn)
+		client := newTestClient(&testTCPConn{conn})
 		go client.run(t, wg)
 	}
 
