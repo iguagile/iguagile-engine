@@ -74,7 +74,7 @@ func (c *testTCPConn) write(message []byte) error {
 	return nil
 }
 
-type testClientTCP struct {
+type testClient struct {
 	conn           testConn
 	isHost         bool
 	clientID       uint32
@@ -86,8 +86,8 @@ type testClientTCP struct {
 	objectsLock    *sync.Mutex
 }
 
-func newTestClient(conn testConn) *testClientTCP {
-	return &testClientTCP{
+func newTestClient(conn testConn) *testClient {
+	return &testClient{
 		conn:           conn,
 		clientID:       0,
 		clientIDByte:   make([]byte, 2),
@@ -101,7 +101,7 @@ func newTestClient(conn testConn) *testClientTCP {
 
 const clients = 3
 
-func (c *testClientTCP) run(t *testing.T, waitGroup *sync.WaitGroup) {
+func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
 	buf, err := c.conn.read()
 	if err != nil {
