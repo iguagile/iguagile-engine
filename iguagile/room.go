@@ -81,6 +81,8 @@ const (
 // Register requests from the clients.
 func (r *Room) Register(client *Client) {
 	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
+
 	go client.writeStart()
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
@@ -93,7 +95,6 @@ func (r *Room) Register(client *Client) {
 	}
 	r.buffer[&message] = client
 
-	defer r.objectsLock.Unlock()
 	for _, obj := range r.objects {
 		objectIDByte := make([]byte, 4)
 		binary.LittleEndian.PutUint32(objectIDByte, uint32(obj.id))
