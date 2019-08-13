@@ -1,12 +1,13 @@
 package iguagile
 
 import (
-	"encoding/binary"
-	"github.com/iguagile/iguagile-engine/data"
-	"github.com/iguagile/iguagile-engine/id"
 	"log"
 	"math"
 	"os"
+
+	"encoding/binary"
+	"github.com/iguagile/iguagile-engine/data"
+	"github.com/iguagile/iguagile-engine/id"
 )
 
 // Room maintains the set of active clients and broadcasts messages to the
