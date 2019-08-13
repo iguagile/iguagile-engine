@@ -222,7 +222,7 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 		lifetime:     data[4],
 		resourcePath: resourcePath,
 	}
-	if err := r.objectManager.Add(objID, obj); err != nil {
+	if err := r.objectManager.Add(obj); err != nil {
 		r.log.Println(err)
 		return
 	}

@@ -46,15 +46,15 @@ func (m *GameObjectManager) Get(objectID int) (*GameObject, error) {
 }
 
 // Add GameObject.
-func (m *GameObjectManager) Add(objectID int, gameObject *GameObject) error {
+func (m *GameObjectManager) Add(gameObject *GameObject) error {
 	m.Lock()
 	defer m.Unlock()
 
-	if _, ok := m.gameObjects[objectID]; ok {
-		return fmt.Errorf("object exist %v", objectID)
+	if _, ok := m.gameObjects[gameObject.id]; ok {
+		return fmt.Errorf("object exist %v", gameObject.id)
 	}
 
-	m.gameObjects[objectID] = gameObject
+	m.gameObjects[gameObject.id] = gameObject
 	return nil
 }
 
