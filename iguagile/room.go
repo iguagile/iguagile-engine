@@ -14,15 +14,14 @@ import (
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
-	id          int
-	clients     map[int]*Client
-	clientsLock *sync.Mutex
-	buffer      map[*[]byte]*Client
-	objects     map[int]*GameObject
-	objectsLock *sync.Mutex
-	generator   *id.Generator
-	log         *log.Logger
-	host        *Client
+	id            int
+	clients       map[int]*Client
+	clientsLock   *sync.Mutex
+	buffer        map[*[]byte]*Client
+	objectManager *GameObjectManager
+	generator     *id.Generator
+	log           *log.Logger
+	host          *Client
 }
 
 // NewRoom is Room constructed.
@@ -38,14 +37,13 @@ func NewRoom(serverID int, store Store) *Room {
 	}
 
 	return &Room{
-		id:          roomID,
-		clients:     make(map[int]*Client),
-		clientsLock: &sync.Mutex{},
-		buffer:      make(map[*[]byte]*Client),
-		objects:     make(map[int]*GameObject),
-		objectsLock: &sync.Mutex{},
-		generator:   gen,
-		log:         log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
+		id:            roomID,
+		clients:       make(map[int]*Client),
+		clientsLock:   &sync.Mutex{},
+		buffer:        make(map[*[]byte]*Client),
+		objectManager: NewGameObjectManager(),
+		generator:     gen,
+		log:           log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }
 
@@ -80,8 +78,8 @@ const (
 
 // Register requests from the clients.
 func (r *Room) Register(client *Client) {
-	r.objectsLock.Lock()
-	defer r.objectsLock.Unlock()
+	r.objectManager.Lock()
+	defer r.objectManager.Unlock()
 
 	go client.writeStart()
 	client.Send(append(client.GetIDByte(), register))
@@ -95,7 +93,7 @@ func (r *Room) Register(client *Client) {
 	}
 	r.buffer[&message] = client
 
-	for _, obj := range r.objects {
+	for _, obj := range r.objectManager.GetGameObjectsMap() {
 		objectIDByte := make([]byte, 4)
 		binary.LittleEndian.PutUint32(objectIDByte, uint32(obj.id))
 		payload := append(objectIDByte, obj.resourcePath...)
@@ -124,14 +122,11 @@ func (r *Room) Unregister(client *Client) {
 
 	r.clientsLock.Lock()
 	delete(r.clients, client.GetID())
-	r.clientsLock.Unlock()
 
-	r.objectsLock.Lock()
 	if len(r.clients) == 0 {
-		r.objects = make(map[int]*GameObject)
+		r.objectManager.Clear()
 		return
 	}
-	r.objectsLock.Unlock()
 
 	if client == r.host && len(r.clients) > 0 {
 		for _, c := range r.clients {
@@ -141,8 +136,9 @@ func (r *Room) Unregister(client *Client) {
 			break
 		}
 	}
+	r.clientsLock.Unlock()
 
-	for _, obj := range r.objects {
+	for _, obj := range r.objectManager.GetGameObjectsMap() {
 		if obj.owner == client {
 			switch obj.lifetime {
 			case roomExist:
@@ -220,17 +216,19 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 	objID := int(binary.LittleEndian.Uint32(objIDByte))
 	resourcePath := data[5:]
 
-	r.objectsLock.Lock()
-	defer r.objectsLock.Unlock()
-	if _, ok := r.objects[objID]; ok {
+	if ok := r.objectManager.Exist(objID); ok {
 		return
 	}
 
-	r.objects[objID] = &GameObject{
+	obj := &GameObject{
 		owner:        sender,
 		id:           objID,
 		lifetime:     data[4],
 		resourcePath: resourcePath,
+	}
+	if err := r.objectManager.Add(objID, obj); err != nil {
+		r.log.Println(err)
+		return
 	}
 
 	message := append(append(append(sender.GetIDByte(), instantiate), objIDByte...), resourcePath...)
@@ -246,10 +244,9 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 
 	objID := int(binary.LittleEndian.Uint32(idByte))
 
-	r.objectsLock.Lock()
-	defer r.objectsLock.Unlock()
-	obj, ok := r.objects[objID]
-	if !ok {
+	obj, err := r.objectManager.Get(objID)
+	if err != nil {
+		r.log.Println(err)
 		return
 	}
 
@@ -257,14 +254,14 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 		return
 	}
 
-	delete(r.objects, objID)
+	r.objectManager.Remove(objID)
 
 	message := append(append(sender.GetIDByte(), destroy), idByte...)
 	r.SendToAllClients(message)
 }
 
 func (r *Room) destroyObject(gameObject *GameObject) {
-	delete(r.objects, gameObject.id)
+	r.objectManager.Remove(gameObject.id)
 	idByte := make([]byte, 4)
 	binary.LittleEndian.PutUint32(idByte, uint32(gameObject.id))
 	message := append(append(gameObject.owner.GetIDByte(), destroy), idByte...)
@@ -279,8 +276,9 @@ func (r *Room) RequestObjectControlAuthority(sender *Client, idByte []byte) {
 	}
 
 	objID := int(binary.LittleEndian.Uint32(idByte))
-	obj, ok := r.objects[objID]
-	if !ok {
+	obj, err := r.objectManager.Get(objID)
+	if err != nil {
+		r.log.Println(err)
 		return
 	}
 
@@ -308,10 +306,9 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	}
 	r.clientsLock.Unlock()
 
-	r.objectsLock.Lock()
-	obj, ok := r.objects[objID]
-	r.objectsLock.Unlock()
-	if !ok {
+	obj, err := r.objectManager.Get(objID)
+	if err != nil {
+		r.log.Println(err)
 		return
 	}
 
