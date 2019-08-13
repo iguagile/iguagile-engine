@@ -8,5 +8,11 @@ go test -v ./iguagile -count=1
 res=$?
 cnt=$((cnt++))
 
-if [ $res -ne 0 ] || [ $cnt -ge 10 ]; then exit 1; fi
+if [ $res -ne 0 ]; then
+  exit 1;
+fi
+
+if [ $cnt -ge 10 ]; then
+  exit 0;
+fi
 
