@@ -1,11 +1,11 @@
 package iguagile
 
 import (
+	"encoding/binary"
 	"log"
 	"math"
 	"os"
 
-	"encoding/binary"
 	"github.com/iguagile/iguagile-engine/data"
 	"github.com/iguagile/iguagile-engine/id"
 )
