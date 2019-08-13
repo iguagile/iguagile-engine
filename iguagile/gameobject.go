@@ -70,6 +70,7 @@ func (m *GameObjectManager) Remove(objectID int) {
 	delete(m.gameObjects, objectID)
 }
 
+// Exist checks the GameObject exists.
 func (m *GameObjectManager) Exist(objectID int) bool {
 	m.Lock()
 	_, ok := m.gameObjects[objectID]
