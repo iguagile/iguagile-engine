@@ -142,7 +142,7 @@ func (m *ClientManager) Exist(clientID int) bool {
 	return ok
 }
 
-// GetClientMap returns all clients.
+// GetClientsMap returns all clients.
 func (m *ClientManager) GetClientsMap() map[int]*Client {
 	return m.clients
 }
