@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sync"
 
 	"github.com/iguagile/iguagile-engine/data"
 	"github.com/iguagile/iguagile-engine/id"
@@ -13,13 +14,15 @@ import (
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
-	id        int
-	clients   map[int]*Client
-	buffer    map[*[]byte]*Client
-	objects   map[int]*GameObject
-	generator *id.Generator
-	log       *log.Logger
-	host      *Client
+	id          int
+	clients     map[int]*Client
+	clientsLock *sync.Mutex
+	buffer      map[*[]byte]*Client
+	objects     map[int]*GameObject
+	objectsLock *sync.Mutex
+	generator   *id.Generator
+	log         *log.Logger
+	host        *Client
 }
 
 // NewRoom is Room constructed.
@@ -35,12 +38,14 @@ func NewRoom(serverID int, store Store) *Room {
 	}
 
 	return &Room{
-		id:        roomID,
-		clients:   make(map[int]*Client),
-		buffer:    make(map[*[]byte]*Client),
-		objects:   make(map[int]*GameObject),
-		generator: gen,
-		log:       log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
+		id:          roomID,
+		clients:     make(map[int]*Client),
+		clientsLock: &sync.Mutex{},
+		buffer:      make(map[*[]byte]*Client),
+		objects:     make(map[int]*GameObject),
+		objectsLock: &sync.Mutex{},
+		generator:   gen,
+		log:         log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }
 
@@ -64,6 +69,8 @@ const (
 	transferObjectControlAuthority
 	migrateHost
 	register
+	transform
+	rpc
 )
 
 const (
@@ -73,11 +80,16 @@ const (
 
 // Register requests from the clients.
 func (r *Room) Register(client *Client) {
-	go client.Run()
+	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
+
+	go client.writeStart()
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
 	r.SendToOtherClients(message, client)
+	r.clientsLock.Lock()
 	r.clients[client.GetID()] = client
+	r.clientsLock.Unlock()
 	for msg := range r.buffer {
 		client.Send(*msg)
 	}
@@ -96,6 +108,8 @@ func (r *Room) Register(client *Client) {
 		message := append(client.GetIDByte(), migrateHost)
 		client.Send(message)
 	}
+
+	go client.readStart()
 }
 
 // Unregister requests from clients.
@@ -107,12 +121,17 @@ func (r *Room) Unregister(client *Client) {
 		}
 	}
 	r.generator.Free(cid)
-	delete(r.clients, client.GetID())
 
+	r.clientsLock.Lock()
+	delete(r.clients, client.GetID())
+	r.clientsLock.Unlock()
+
+	r.objectsLock.Lock()
 	if len(r.clients) == 0 {
 		r.objects = make(map[int]*GameObject)
 		return
 	}
+	r.objectsLock.Unlock()
 
 	if client == r.host && len(r.clients) > 0 {
 		for _, c := range r.clients {
@@ -199,11 +218,14 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 
 	objIDByte := data[:4]
 	objID := int(binary.LittleEndian.Uint32(objIDByte))
+	resourcePath := data[5:]
+
+	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
 	if _, ok := r.objects[objID]; ok {
 		return
 	}
 
-	resourcePath := data[5:]
 	r.objects[objID] = &GameObject{
 		owner:        sender,
 		id:           objID,
@@ -223,6 +245,9 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 	}
 
 	objID := int(binary.LittleEndian.Uint32(idByte))
+
+	r.objectsLock.Lock()
+	defer r.objectsLock.Unlock()
 	obj, ok := r.objects[objID]
 	if !ok {
 		return
@@ -276,11 +301,16 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	clientIDByte := payload[4:8]
 	clientID := int(binary.LittleEndian.Uint32(clientIDByte))
 
+	r.clientsLock.Lock()
 	if _, ok := r.clients[clientID]; !ok {
+		r.clientsLock.Unlock()
 		return
 	}
+	r.clientsLock.Unlock()
 
+	r.objectsLock.Lock()
 	obj, ok := r.objects[objID]
+	r.objectsLock.Unlock()
 	if !ok {
 		return
 	}
@@ -290,12 +320,14 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	}
 
 	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
+	r.clientsLock.Lock()
 	for cid, client := range r.clients {
 		if cid == clientID {
 			client.Send(message)
 			obj.owner = client
 		}
 	}
+	r.clientsLock.Unlock()
 }
 
 func (r *Room) transferObjectControlAuthority(gameObject *GameObject, client *Client) {
@@ -326,6 +358,8 @@ func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 
 // SendToAllClients sends outbound message to all registered clients.
 func (r *Room) SendToAllClients(message []byte) {
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
 	for _, client := range r.clients {
 		client.Send(message)
 	}
@@ -333,6 +367,8 @@ func (r *Room) SendToAllClients(message []byte) {
 
 // SendToOtherClients sends outbound message to other registered clients.
 func (r *Room) SendToOtherClients(message []byte, sender *Client) {
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
 	for _, client := range r.clients {
 		if client != sender {
 			client.Send(message)

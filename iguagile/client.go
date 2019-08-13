@@ -32,33 +32,31 @@ func NewClient(room *Room, conn Conn) (*Client, error) {
 	return client, nil
 }
 
-// Run is provides backend synchronize goroutine.
-func (c *Client) Run() {
-	go func() {
-		for {
-			message, err := c.conn.Read()
-			if err != nil {
-				c.room.log.Println(err)
-				c.room.CloseConnection(c)
-				break
-			}
+func (c *Client) readStart() {
+	for {
+		message, err := c.conn.Read()
+		if err != nil {
+			c.room.log.Println(err)
+			c.room.CloseConnection(c)
+			break
+		}
 
-			if err = c.room.Receive(c, message); err != nil {
-				c.room.log.Println(err)
-				c.room.CloseConnection(c)
-				break
-			}
+		if err = c.room.Receive(c, message); err != nil {
+			c.room.log.Println(err)
+			c.room.CloseConnection(c)
+			break
 		}
-	}()
-	go func() {
-		for {
-			if err := c.conn.Write(<-c.send); err != nil {
-				c.room.log.Println(err)
-				c.room.CloseConnection(c)
-				break
-			}
+	}
+}
+
+func (c *Client) writeStart() {
+	for {
+		if err := c.conn.Write(<-c.send); err != nil {
+			c.room.log.Println(err)
+			c.room.CloseConnection(c)
+			break
 		}
-	}()
+	}
 }
 
 // GetID is getter for id.
