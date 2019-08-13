@@ -2,21 +2,18 @@ package iguagile
 
 import (
 	"encoding/binary"
+	"github.com/iguagile/iguagile-engine/data"
+	"github.com/iguagile/iguagile-engine/id"
 	"log"
 	"math"
 	"os"
-	"sync"
-
-	"github.com/iguagile/iguagile-engine/data"
-	"github.com/iguagile/iguagile-engine/id"
 )
 
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
 	id            int
-	clients       map[int]*Client
-	clientsLock   *sync.Mutex
+	clientManager *ClientManager
 	buffer        map[*[]byte]*Client
 	objectManager *GameObjectManager
 	generator     *id.Generator
@@ -38,8 +35,7 @@ func NewRoom(serverID int, store Store) *Room {
 
 	return &Room{
 		id:            roomID,
-		clients:       make(map[int]*Client),
-		clientsLock:   &sync.Mutex{},
+		clientManager: NewClientManager(),
 		buffer:        make(map[*[]byte]*Client),
 		objectManager: NewGameObjectManager(),
 		generator:     gen,
@@ -85,9 +81,10 @@ func (r *Room) Register(client *Client) {
 	client.Send(append(client.GetIDByte(), register))
 	message := append(client.GetIDByte(), newConnection)
 	r.SendToOtherClients(message, client)
-	r.clientsLock.Lock()
-	r.clients[client.GetID()] = client
-	r.clientsLock.Unlock()
+	if err := r.clientManager.Add(client); err != nil {
+		r.log.Println(err)
+		return
+	}
 	for msg := range r.buffer {
 		client.Send(*msg)
 	}
@@ -101,7 +98,7 @@ func (r *Room) Register(client *Client) {
 		client.Send(msg)
 	}
 
-	if len(r.clients) == 1 {
+	if r.clientManager.Count() == 1 {
 		r.host = client
 		message := append(client.GetIDByte(), migrateHost)
 		client.Send(message)
@@ -120,23 +117,22 @@ func (r *Room) Unregister(client *Client) {
 	}
 	r.generator.Free(cid)
 
-	r.clientsLock.Lock()
-	delete(r.clients, client.GetID())
+	r.clientManager.Remove(client.GetID())
 
-	if len(r.clients) == 0 {
+	if r.clientManager.Count() == 0 {
 		r.objectManager.Clear()
 		return
 	}
 
-	if client == r.host && len(r.clients) > 0 {
-		for _, c := range r.clients {
+	if client == r.host && r.clientManager.Count() > 0 {
+		for _, c := range r.clientManager.GetClientsMap() {
 			r.host = c
 			message := append(c.GetIDByte(), migrateHost)
 			c.Send(message)
 			break
 		}
 	}
-	r.clientsLock.Unlock()
+	r.clientManager.Unlock()
 
 	for _, obj := range r.objectManager.GetGameObjectsMap() {
 		if obj.owner == client {
@@ -299,12 +295,9 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	clientIDByte := payload[4:8]
 	clientID := int(binary.LittleEndian.Uint32(clientIDByte))
 
-	r.clientsLock.Lock()
-	if _, ok := r.clients[clientID]; !ok {
-		r.clientsLock.Unlock()
+	if !r.clientManager.Exist(clientID) {
 		return
 	}
-	r.clientsLock.Unlock()
 
 	obj, err := r.objectManager.Get(objID)
 	if err != nil {
@@ -317,14 +310,14 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 	}
 
 	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
-	r.clientsLock.Lock()
-	for cid, client := range r.clients {
+	r.clientManager.Lock()
+	for cid, client := range r.clientManager.GetClientsMap() {
 		if cid == clientID {
 			client.Send(message)
 			obj.owner = client
 		}
 	}
-	r.clientsLock.Unlock()
+	r.clientManager.Unlock()
 }
 
 func (r *Room) transferObjectControlAuthority(gameObject *GameObject, client *Client) {
@@ -344,29 +337,31 @@ func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 
 	clientID := int(binary.LittleEndian.Uint32(idByte))
 
-	for cid, client := range r.clients {
+	r.clientManager.Lock()
+	for cid, client := range r.clientManager.GetClientsMap() {
 		if cid == clientID {
 			message := append(client.GetIDByte(), migrateHost)
 			client.Send(message)
 			break
 		}
 	}
+	r.clientManager.Unlock()
 }
 
 // SendToAllClients sends outbound message to all registered clients.
 func (r *Room) SendToAllClients(message []byte) {
-	r.clientsLock.Lock()
-	defer r.clientsLock.Unlock()
-	for _, client := range r.clients {
+	r.clientManager.Lock()
+	defer r.clientManager.Unlock()
+	for _, client := range r.clientManager.GetClientsMap() {
 		client.Send(message)
 	}
 }
 
 // SendToOtherClients sends outbound message to other registered clients.
 func (r *Room) SendToOtherClients(message []byte, sender *Client) {
-	r.clientsLock.Lock()
-	defer r.clientsLock.Unlock()
-	for _, client := range r.clients {
+	r.clientManager.Lock()
+	defer r.clientManager.Unlock()
+	for _, client := range r.clientManager.GetClientsMap() {
 		if client != sender {
 			client.Send(message)
 		}
@@ -385,7 +380,9 @@ func (r *Room) CloseConnection(client *Client) {
 
 // Close closes all client connections.
 func (r *Room) Close() error {
-	for _, client := range r.clients {
+	r.clientManager.Lock()
+	defer r.clientManager.Unlock()
+	for _, client := range r.clientManager.GetClientsMap() {
 		if err := client.Close(); err != nil {
 			r.log.Println(err)
 		}
