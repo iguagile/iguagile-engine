@@ -45,6 +45,7 @@ type testConn interface {
 
 type testTCPConn struct {
 	conn *net.TCPConn
+	*sync.Mutex
 }
 
 func (c *testTCPConn) read() ([]byte, error) {
@@ -68,6 +69,8 @@ func (c *testTCPConn) write(message []byte) error {
 	sizeBuf := make([]byte, 2)
 	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
 	data := append(sizeBuf, message...)
+	c.Lock()
+	defer c.Unlock()
 	if _, err := c.conn.Write(data); err != nil {
 		return err
 	}
@@ -252,7 +255,7 @@ func TestConnectionTCP(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		client := newTestClient(&testTCPConn{conn})
+		client := newTestClient(&testTCPConn{conn, &sync.Mutex{}})
 		go client.run(t, wg)
 	}
 

@@ -43,6 +43,7 @@ func ListenWebsocket(t *testing.T) {
 
 type testWebsocketConn struct {
 	conn *websocket.Conn
+	*sync.Mutex
 }
 
 func (c *testWebsocketConn) read() ([]byte, error) {
@@ -51,6 +52,8 @@ func (c *testWebsocketConn) read() ([]byte, error) {
 }
 
 func (c *testWebsocketConn) write(message []byte) error {
+	c.Lock()
+	defer c.Unlock()
 	return c.conn.WriteMessage(websocket.BinaryMessage, message)
 }
 
@@ -66,7 +69,7 @@ func TestConnectionWebsocket(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		client := newTestClient(&testWebsocketConn{conn})
+		client := newTestClient(&testWebsocketConn{conn, &sync.Mutex{}})
 		go client.run(t, wg)
 	}
 
