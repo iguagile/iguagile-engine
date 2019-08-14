@@ -2,6 +2,7 @@ package iguagile
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"sync"
 )
@@ -160,4 +161,17 @@ func (m *ClientManager) Clear() {
 // Count clients.
 func (m *ClientManager) Count() int {
 	return m.count
+}
+
+// First returns a first element.
+func (m *ClientManager) First() (*Client, error) {
+	m.Lock()
+	defer m.Unlock()
+	if m.count == 0 {
+		return nil, errors.New("clients not exist")
+	}
+
+	for _, client := range m.clients {
+		return client, nil
+	}
 }

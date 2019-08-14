@@ -126,14 +126,14 @@ func (r *Room) Unregister(client *Client) {
 	}
 
 	if client == r.host {
-		r.clientManager.Lock()
-		for _, c := range r.clientManager.GetAllClients() {
+		c, err := r.clientManager.First()
+		if err != nil {
+			r.log.Println(err)
+		} else {
 			r.host = c
 			message := append(c.GetIDByte(), migrateHost)
 			c.Send(message)
-			break
 		}
-		r.clientManager.Unlock()
 	}
 
 	for _, obj := range r.objectManager.GetAllGameObjects() {
