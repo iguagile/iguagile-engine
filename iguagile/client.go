@@ -1,6 +1,11 @@
 package iguagile
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"sync"
+)
 
 // Client is a middleman between the connection and the room.
 type Client struct {
@@ -77,4 +82,95 @@ func (c *Client) Send(message []byte) {
 // Close closes the connection.
 func (c *Client) Close() error {
 	return c.conn.Close()
+}
+
+// ClientManager manages clients.
+type ClientManager struct {
+	clients map[int]*Client
+	count   int
+	*sync.Mutex
+}
+
+// NewClientManager is ClientManager constructed.
+func NewClientManager() *ClientManager {
+	return &ClientManager{
+		clients: make(map[int]*Client),
+		Mutex:   &sync.Mutex{},
+	}
+}
+
+// Get the client.
+func (m *ClientManager) Get(clientID int) (*Client, error) {
+	m.Lock()
+	client, ok := m.clients[clientID]
+	m.Unlock()
+	if !ok {
+		return nil, fmt.Errorf("client not exists %v", clientID)
+	}
+
+	return client, nil
+}
+
+// Add the client.
+func (m *ClientManager) Add(client *Client) error {
+	m.Lock()
+	defer m.Unlock()
+
+	if _, ok := m.clients[client.GetID()]; ok {
+		return fmt.Errorf("client already exists %v", client.GetID())
+	}
+
+	m.clients[client.GetID()] = client
+	m.count++
+	return nil
+}
+
+// Remove the client.
+func (m *ClientManager) Remove(clientID int) {
+	m.Lock()
+	defer m.Unlock()
+
+	if _, ok := m.clients[clientID]; !ok {
+		return
+	}
+
+	delete(m.clients, clientID)
+	m.count--
+}
+
+// Exist checks the client exists.
+func (m *ClientManager) Exist(clientID int) bool {
+	m.Lock()
+	_, ok := m.clients[clientID]
+	m.Unlock()
+	return ok
+}
+
+// GetAllClients returns all clients.
+func (m *ClientManager) GetAllClients() map[int]*Client {
+	return m.clients
+}
+
+// Clear all clients.
+func (m *ClientManager) Clear() {
+	m.Lock()
+	m.clients = make(map[int]*Client)
+	m.Unlock()
+}
+
+// Count clients.
+func (m *ClientManager) Count() int {
+	return m.count
+}
+
+// First returns a first element.
+func (m *ClientManager) First() (*Client, error) {
+	m.Lock()
+	defer m.Unlock()
+
+	for _, client := range m.clients {
+		return client, nil
+	}
+
+	return nil, errors.New("clients not exist")
 }
