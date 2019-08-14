@@ -311,15 +311,15 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 		return
 	}
 
-	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
-	r.clientManager.Lock()
-	for cid, client := range r.clientManager.GetAllClients() {
-		if cid == clientID {
-			client.Send(message)
-			obj.owner = client
-		}
+	client, err := r.clientManager.Get(clientID)
+	if err != nil {
+		r.log.Println(err)
+		return
 	}
-	r.clientManager.Unlock()
+
+	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
+	client.Send(message)
+	obj.owner = client
 }
 
 func (r *Room) transferObjectControlAuthority(gameObject *GameObject, client *Client) {
