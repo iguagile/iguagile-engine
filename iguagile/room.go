@@ -337,17 +337,21 @@ func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 		return
 	}
 
+	if sender != r.host {
+		return
+	}
+
 	clientID := int(binary.LittleEndian.Uint32(idByte))
 
-	r.clientManager.Lock()
-	for cid, client := range r.clientManager.GetAllClients() {
-		if cid == clientID {
-			message := append(client.GetIDByte(), migrateHost)
-			client.Send(message)
-			break
-		}
+	client, err := r.clientManager.Get(clientID)
+	if err != nil {
+		r.log.Println(err)
+		return
 	}
-	r.clientManager.Unlock()
+
+	r.host = client
+	message := append(client.GetIDByte(), migrateHost)
+	client.Send(message)
 }
 
 // SendToAllClients sends outbound message to all registered clients.
