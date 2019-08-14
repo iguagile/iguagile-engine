@@ -91,7 +91,7 @@ func (r *Room) Register(client *Client) {
 	}
 	r.buffer[&message] = client
 
-	for _, obj := range r.objectManager.GetGameObjectsMap() {
+	for _, obj := range r.objectManager.GetAllGameObjects() {
 		objectIDByte := make([]byte, 4)
 		binary.LittleEndian.PutUint32(objectIDByte, uint32(obj.id))
 		payload := append(objectIDByte, obj.resourcePath...)
@@ -135,7 +135,7 @@ func (r *Room) Unregister(client *Client) {
 	}
 	r.clientManager.Unlock()
 
-	for _, obj := range r.objectManager.GetGameObjectsMap() {
+	for _, obj := range r.objectManager.GetAllGameObjects() {
 		if obj.owner == client {
 			switch obj.lifetime {
 			case roomExist:

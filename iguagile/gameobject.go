@@ -78,8 +78,8 @@ func (m *GameObjectManager) Exist(objectID int) bool {
 	return ok
 }
 
-// GetGameObjectsMap returns all GameObjects.
-func (m *GameObjectManager) GetGameObjectsMap() map[int]*GameObject {
+// GetAllGameObjects returns all GameObjects.
+func (m *GameObjectManager) GetAllGameObjects() map[int]*GameObject {
 	return m.gameObjects
 }
 
