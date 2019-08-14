@@ -167,11 +167,10 @@ func (m *ClientManager) Count() int {
 func (m *ClientManager) First() (*Client, error) {
 	m.Lock()
 	defer m.Unlock()
-	if m.count == 0 {
-		return nil, errors.New("clients not exist")
-	}
 
 	for _, client := range m.clients {
 		return client, nil
 	}
+
+	return nil, errors.New("clients not exist")
 }
