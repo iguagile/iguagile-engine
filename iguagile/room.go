@@ -125,6 +125,7 @@ func (r *Room) Unregister(client *Client) {
 		return
 	}
 
+	r.clientManager.Lock()
 	if client == r.host{
 		for _, c := range r.clientManager.GetAllClients() {
 			r.host = c
