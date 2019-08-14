@@ -126,7 +126,7 @@ func (r *Room) Unregister(client *Client) {
 	}
 
 	if client == r.host && r.clientManager.Count() > 0 {
-		for _, c := range r.clientManager.GetClientsMap() {
+		for _, c := range r.clientManager.GetAllClients() {
 			r.host = c
 			message := append(c.GetIDByte(), migrateHost)
 			c.Send(message)
@@ -312,7 +312,7 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 
 	message := append(append(sender.GetIDByte(), transferObjectControlAuthority), objIDByte...)
 	r.clientManager.Lock()
-	for cid, client := range r.clientManager.GetClientsMap() {
+	for cid, client := range r.clientManager.GetAllClients() {
 		if cid == clientID {
 			client.Send(message)
 			obj.owner = client
@@ -339,7 +339,7 @@ func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 	clientID := int(binary.LittleEndian.Uint32(idByte))
 
 	r.clientManager.Lock()
-	for cid, client := range r.clientManager.GetClientsMap() {
+	for cid, client := range r.clientManager.GetAllClients() {
 		if cid == clientID {
 			message := append(client.GetIDByte(), migrateHost)
 			client.Send(message)
@@ -353,7 +353,7 @@ func (r *Room) MigrateHost(sender *Client, idByte []byte) {
 func (r *Room) SendToAllClients(message []byte) {
 	r.clientManager.Lock()
 	defer r.clientManager.Unlock()
-	for _, client := range r.clientManager.GetClientsMap() {
+	for _, client := range r.clientManager.GetAllClients() {
 		client.Send(message)
 	}
 }
@@ -362,7 +362,7 @@ func (r *Room) SendToAllClients(message []byte) {
 func (r *Room) SendToOtherClients(message []byte, sender *Client) {
 	r.clientManager.Lock()
 	defer r.clientManager.Unlock()
-	for _, client := range r.clientManager.GetClientsMap() {
+	for _, client := range r.clientManager.GetAllClients() {
 		if client != sender {
 			client.Send(message)
 		}
@@ -383,7 +383,7 @@ func (r *Room) CloseConnection(client *Client) {
 func (r *Room) Close() error {
 	r.clientManager.Lock()
 	defer r.clientManager.Unlock()
-	for _, client := range r.clientManager.GetClientsMap() {
+	for _, client := range r.clientManager.GetAllClients() {
 		if err := client.Close(); err != nil {
 			r.log.Println(err)
 		}

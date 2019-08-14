@@ -142,8 +142,8 @@ func (m *ClientManager) Exist(clientID int) bool {
 	return ok
 }
 
-// GetClientsMap returns all clients.
-func (m *ClientManager) GetClientsMap() map[int]*Client {
+// GetAllClients returns all clients.
+func (m *ClientManager) GetAllClients() map[int]*Client {
 	return m.clients
 }
 
