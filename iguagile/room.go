@@ -126,7 +126,7 @@ func (r *Room) Unregister(client *Client) {
 	}
 
 	r.clientManager.Lock()
-	if client == r.host{
+	if client == r.host {
 		for _, c := range r.clientManager.GetAllClients() {
 			r.host = c
 			message := append(c.GetIDByte(), migrateHost)
