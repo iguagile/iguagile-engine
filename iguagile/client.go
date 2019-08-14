@@ -86,6 +86,7 @@ func (c *Client) Close() error {
 // ClientManager manages clients.
 type ClientManager struct {
 	clients map[int]*Client
+	count   int
 	*sync.Mutex
 }
 
@@ -119,6 +120,7 @@ func (m *ClientManager) Add(client *Client) error {
 	}
 
 	m.clients[client.GetID()] = client
+	m.count++
 	return nil
 }
 
@@ -132,6 +134,7 @@ func (m *ClientManager) Remove(clientID int) {
 	}
 
 	delete(m.clients, clientID)
+	m.count--
 }
 
 // Exist checks the client exists.
@@ -156,7 +159,5 @@ func (m *ClientManager) Clear() {
 
 // Count clients.
 func (m *ClientManager) Count() int {
-	m.Lock()
-	defer m.Unlock()
-	return len(m.clients)
+	return m.count
 }
