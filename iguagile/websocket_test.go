@@ -53,7 +53,7 @@ func (c *testWebsocketConn) read() ([]byte, error) {
 
 func (c *testWebsocketConn) write(message []byte) error {
 	c.Lock()
-	defer c.Lock()
+	defer c.Unlock()
 	return c.conn.WriteMessage(websocket.BinaryMessage, message)
 }
 
