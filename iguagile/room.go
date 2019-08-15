@@ -113,6 +113,8 @@ func (r *Room) Unregister(client *Client) {
 	r.clientManager.Remove(client.GetID())
 	r.rpcBufferManager.Remove(client)
 
+	r.objectManager.Lock()
+	defer r.objectManager.Unlock()
 	if r.clientManager.Count() == 0 {
 		r.objectManager.Clear()
 		return
@@ -207,6 +209,8 @@ func (r *Room) InstantiateObject(sender *Client, data []byte) {
 	objID := int(binary.LittleEndian.Uint32(objIDByte))
 	resourcePath := data[5:]
 
+	r.objectManager.Lock()
+	defer r.objectManager.Unlock()
 	if ok := r.objectManager.Exist(objID); ok {
 		return
 	}
@@ -235,6 +239,8 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 
 	objID := int(binary.LittleEndian.Uint32(idByte))
 
+	r.objectManager.Lock()
+	defer r.objectManager.Unlock()
 	obj, err := r.objectManager.Get(objID)
 	if err != nil {
 		r.log.Println(err)
@@ -252,6 +258,8 @@ func (r *Room) DestroyObject(sender *Client, idByte []byte) {
 }
 
 func (r *Room) destroyObject(gameObject *GameObject) {
+	r.objectManager.Lock()
+	defer r.objectManager.Unlock()
 	r.objectManager.Remove(gameObject.id)
 	idByte := make([]byte, 4)
 	binary.LittleEndian.PutUint32(idByte, uint32(gameObject.id))
@@ -267,7 +275,9 @@ func (r *Room) RequestObjectControlAuthority(sender *Client, idByte []byte) {
 	}
 
 	objID := int(binary.LittleEndian.Uint32(idByte))
+	r.objectManager.Lock()
 	obj, err := r.objectManager.Get(objID)
+	r.objectManager.Unlock()
 	if err != nil {
 		r.log.Println(err)
 		return
@@ -294,6 +304,8 @@ func (r *Room) TransferObjectControlAuthority(sender *Client, payload []byte) {
 		return
 	}
 
+	r.objectManager.Lock()
+	defer r.objectManager.Unlock()
 	obj, err := r.objectManager.Get(objID)
 	if err != nil {
 		r.log.Println(err)
