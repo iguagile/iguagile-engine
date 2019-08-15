@@ -13,13 +13,13 @@ import (
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
-	id            int
-	clientManager *ClientManager
-	buffer        map[*[]byte]*Client
-	objectManager *GameObjectManager
-	generator     *id.Generator
-	log           *log.Logger
-	host          *Client
+	id               int
+	clientManager    *ClientManager
+	objectManager    *GameObjectManager
+	rpcBufferManager *RPCBufferManager
+	generator        *id.Generator
+	log              *log.Logger
+	host             *Client
 }
 
 // NewRoom is Room constructed.
@@ -35,12 +35,12 @@ func NewRoom(serverID int, store Store) *Room {
 	}
 
 	return &Room{
-		id:            roomID,
-		clientManager: NewClientManager(),
-		buffer:        make(map[*[]byte]*Client),
-		objectManager: NewGameObjectManager(),
-		generator:     gen,
-		log:           log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
+		id:               roomID,
+		clientManager:    NewClientManager(),
+		objectManager:    NewGameObjectManager(),
+		rpcBufferManager: NewRPCBufferManager(),
+		generator:        gen,
+		log:              log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
 }
 
@@ -86,10 +86,9 @@ func (r *Room) Register(client *Client) {
 		r.log.Println(err)
 		return
 	}
-	for msg := range r.buffer {
-		client.Send(*msg)
-	}
-	r.buffer[&message] = client
+
+	r.rpcBufferManager.SendRPCBuffer(client)
+	r.rpcBufferManager.Add(message, client)
 
 	for _, obj := range r.objectManager.GetAllGameObjects() {
 		objectIDByte := make([]byte, 4)
@@ -110,15 +109,9 @@ func (r *Room) Register(client *Client) {
 
 // Unregister requests from clients.
 func (r *Room) Unregister(client *Client) {
-	cid := client.GetID()
-	for message, c := range r.buffer {
-		if c == client {
-			delete(r.buffer, message)
-		}
-	}
-	r.generator.Free(cid)
-
+	r.generator.Free(client.GetID())
 	r.clientManager.Remove(client.GetID())
+	r.rpcBufferManager.Remove(client)
 
 	if r.clientManager.Count() == 0 {
 		r.objectManager.Clear()
@@ -170,10 +163,10 @@ func (r *Room) Receive(sender *Client, receivedData []byte) error {
 		r.SendToAllClients(message)
 	case OtherClientsBuffered:
 		r.SendToOtherClients(message, sender)
-		r.buffer[&message] = sender
+		r.rpcBufferManager.Add(message, sender)
 	case AllClientsBuffered:
 		r.SendToAllClients(message)
-		r.buffer[&message] = sender
+		r.rpcBufferManager.Add(message, sender)
 	case Host:
 		r.host.Send(message)
 	case Server:
