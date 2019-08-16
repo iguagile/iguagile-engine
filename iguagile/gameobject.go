@@ -35,9 +35,7 @@ func NewGameObjectManager() *GameObjectManager {
 
 // Get GameObject.
 func (m *GameObjectManager) Get(objectID int) (*GameObject, error) {
-	m.Lock()
 	gameObject, ok := m.gameObjects[objectID]
-	m.Unlock()
 	if !ok {
 		return nil, fmt.Errorf("object not exists %v", objectID)
 	}
@@ -47,9 +45,6 @@ func (m *GameObjectManager) Get(objectID int) (*GameObject, error) {
 
 // Add GameObject.
 func (m *GameObjectManager) Add(gameObject *GameObject) error {
-	m.Lock()
-	defer m.Unlock()
-
 	if _, ok := m.gameObjects[gameObject.id]; ok {
 		return fmt.Errorf("object exist %v", gameObject.id)
 	}
@@ -60,9 +55,6 @@ func (m *GameObjectManager) Add(gameObject *GameObject) error {
 
 // Remove GameObject.
 func (m *GameObjectManager) Remove(objectID int) {
-	m.Lock()
-	defer m.Unlock()
-
 	if _, ok := m.gameObjects[objectID]; !ok {
 		return
 	}
@@ -72,9 +64,7 @@ func (m *GameObjectManager) Remove(objectID int) {
 
 // Exist checks the GameObject exists.
 func (m *GameObjectManager) Exist(objectID int) bool {
-	m.Lock()
 	_, ok := m.gameObjects[objectID]
-	m.Unlock()
 	return ok
 }
 
@@ -85,7 +75,5 @@ func (m *GameObjectManager) GetAllGameObjects() map[int]*GameObject {
 
 // Clear all GameObjects.
 func (m *GameObjectManager) Clear() {
-	m.Lock()
 	m.gameObjects = make(map[int]*GameObject)
-	m.Unlock()
 }
