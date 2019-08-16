@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/iguagile/iguagile-engine/data"
-	"github.com/iguagile/iguagile-engine/id"
 )
 
 // Room maintains the set of active clients and broadcasts messages to the
@@ -17,7 +16,7 @@ type Room struct {
 	clientManager    *ClientManager
 	objectManager    *GameObjectManager
 	rpcBufferManager *RPCBufferManager
-	generator        *id.Generator
+	generator        *IDGenerator
 	log              *log.Logger
 	host             *Client
 }
@@ -29,7 +28,7 @@ func NewRoom(serverID int, store Store) *Room {
 		log.Fatal(err)
 	}
 
-	gen, err := id.NewGenerator(math.MaxInt16)
+	gen, err := NewIDGenerator()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,7 +108,10 @@ func (r *Room) Register(client *Client) {
 
 // Unregister requests from clients.
 func (r *Room) Unregister(client *Client) {
-	r.generator.Free(client.GetID())
+	if err := r.generator.Free(client.GetID()); err != nil {
+		r.log.Println(err)
+	}
+
 	r.clientManager.Remove(client.GetID())
 	r.rpcBufferManager.Remove(client)
 
