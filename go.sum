@@ -2,3 +2,8 @@ github.com/gomodule/redigo v2.0.0+incompatible h1:K/R+8tc58AaqLkqG2Ol3Qk+DR/TlNu
 github.com/gomodule/redigo v2.0.0+incompatible/go.mod h1:B4C85qUVwatsJoIUNIfCRsp7qO0iAmpGFZ4EELWSbC4=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
+github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
+github.com/minami14/go-bitarray v1.0.0 h1:j4+OEFKTFTIrjTSo6bXOImcYf+w2U3R1b4CqGU2xUMM=
+github.com/minami14/go-bitarray v1.0.0/go.mod h1:acA3F6YzUx/WBUPpoR1HS5H1HAlINmfn1nE9aSilp2g=
+github.com/minami14/idgo v1.1.0 h1:J6Ax2MZXfGijIWF/gh8ZxlbqedGYGKu/yR2kKl3K2Fk=
+github.com/minami14/idgo v1.1.0/go.mod h1:bKmaKSNP9s3aDPpSd10hycxTDWSG9G+ZRq7TA39VgT4=
