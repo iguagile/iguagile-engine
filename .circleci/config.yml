@@ -5,7 +5,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.12.7
+      - image: circleci/golang:1.12.9
         environment:
           GO111MODULE: "on"
           REDIS_HOST: "localhost:6379"
