@@ -100,7 +100,7 @@ func newBenchClient(conn benchConn) *benchClient {
 	}
 }
 
-const BenchClients = 1
+const BenchClients = 75
 
 func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
@@ -145,13 +145,10 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 		}
 
 		if c.isHost {
-			log.Println("before lock")
 			c.objectsLock.Lock()
-			log.Println("after lock")
 			for objectID := range c.objects {
 				objectIDByte := make([]byte, 4)
 				binary.LittleEndian.PutUint32(objectIDByte, objectID)
-				log.Printf("send request %v\n", objectID)
 				message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
 				if err := c.conn.write(message); err != nil {
 					b.Error(err)
@@ -184,7 +181,7 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 			delete(c.otherClients, clientID)
 		case instantiate:
 			objectID := binary.LittleEndian.Uint32(payload)
-			log.Printf("instantiate %v %v\n", objectID, c.clientID)
+
 			wg.Done()
 			if clientID != c.clientID {
 				c.objectsLock.Lock()
