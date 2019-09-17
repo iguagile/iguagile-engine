@@ -35,7 +35,7 @@ func (c *ConnTCP) Read() ([]byte, error) {
 	receivedSizeSum := 0
 	message := make([]byte, 0)
 	for receivedSizeSum < size {
-		receivedSize, err := c.conn.Read(buf[:size])
+		receivedSize, err := c.conn.Read(buf[:size-receivedSizeSum])
 		if err != nil {
 			return nil, err
 		}
