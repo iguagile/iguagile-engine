@@ -17,7 +17,7 @@ func ListenBenchTCP(b *testing.B) {
 	}
 	r := NewRoom(serverID, store)
 
-	addr, err := net.ResolveTCPAddr("tcp", host)
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:4021")
 	if err != nil {
 		b.Errorf("%v", err)
 	}
@@ -244,7 +244,7 @@ func BenchmarkConnectionTCP(b *testing.B) {
 	wg := &sync.WaitGroup{}
 	wg.Add(BenchClients)
 
-	addr, err := net.ResolveTCPAddr("tcp", host)
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:4021")
 	if err != nil {
 		b.Errorf("%v", err)
 	}
