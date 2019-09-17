@@ -28,7 +28,7 @@ func ListenTCP(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 	go func() {
-		for {
+		for i := 0; i < clients; i++ {
 			conn, err := listener.AcceptTCP()
 			if err != nil {
 				t.Errorf("%v", err)
