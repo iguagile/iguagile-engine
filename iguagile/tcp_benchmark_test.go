@@ -26,7 +26,7 @@ func ListenBenchTCP(b *testing.B) {
 		b.Errorf("%v", err)
 	}
 	go func() {
-		for {
+		for i := 0; i < BenchClients; i++ {
 			conn, err := listener.AcceptTCP()
 			if err != nil {
 				b.Errorf("%v", err)
@@ -239,7 +239,6 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 }
 
 func BenchmarkConnectionTCP(b *testing.B) {
-	os.Setenv("REDIS_HOST", "localhost:6379")
 	ListenBenchTCP(b)
 	wg := &sync.WaitGroup{}
 	wg.Add(BenchClients)
