@@ -18,5 +18,4 @@ git clone git@github.com:iguagile/iguagile-engine.git
 cd iguagile-engine
 docker-compose up
 # connect to tcp 4000 port.
-# connect to websocket 5000 port.
 ```
