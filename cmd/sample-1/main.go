@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"net/http"
 
 	"github.com/iguagile/iguagile-engine/iguagile"
 )
@@ -38,11 +37,4 @@ func main() {
 			iguagile.ServeTCP(room, conn)
 		}
 	}()
-	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		iguagile.ServeWebsocket(room, writer, request)
-	})
-	log.Println("ListenWebsocket")
-	if err := http.ListenAndServe(":5000", nil); err != nil {
-		log.Fatal(err)
-	}
 }
