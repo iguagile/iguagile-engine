@@ -27,14 +27,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go func() {
-		for {
-			conn, err := listen.AcceptTCP()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			iguagile.ServeTCP(room, conn)
+
+	for {
+		conn, err := listen.AcceptTCP()
+		if err != nil {
+			log.Println(err)
+			continue
 		}
-	}()
+		iguagile.ServeTCP(room, conn)
+	}
 }
