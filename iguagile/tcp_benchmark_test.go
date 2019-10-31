@@ -31,7 +31,7 @@ func ListenBenchTCP(b *testing.B) {
 			if err != nil {
 				b.Errorf("%v", err)
 			}
-			ServeTCP(r, conn)
+			r.Serve(conn)
 		}
 	}()
 }

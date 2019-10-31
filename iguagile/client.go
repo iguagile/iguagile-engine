@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 )
 
@@ -11,13 +12,13 @@ import (
 type Client struct {
 	id     int
 	idByte []byte
-	conn   Conn
+	conn   io.ReadWriteCloser
 	room   *Room
 	send   chan []byte
 }
 
 // NewClient is Client constructed.
-func NewClient(room *Room, conn Conn) (*Client, error) {
+func NewClient(room *Room, conn io.ReadWriteCloser) (*Client, error) {
 	id, err := room.generator.Generate()
 	if err != nil {
 		return nil, err
@@ -37,9 +38,33 @@ func NewClient(room *Room, conn Conn) (*Client, error) {
 	return client, nil
 }
 
+func (c *Client) read() ([]byte, error) {
+	buf := make([]byte, maxMessageSize)
+	sizeBuf := make([]byte, 2)
+	_, err := c.conn.Read(sizeBuf)
+	if err != nil {
+		return nil, err
+	}
+
+	size := int(binary.LittleEndian.Uint16(sizeBuf))
+	receivedSizeSum := 0
+	message := make([]byte, 0)
+	for receivedSizeSum < size {
+		receivedSize, err := c.conn.Read(buf[:size-receivedSizeSum])
+		if err != nil {
+			return nil, err
+		}
+
+		message = append(message, buf[:receivedSize]...)
+		receivedSizeSum += receivedSize
+	}
+
+	return message, nil
+}
+
 func (c *Client) readStart() {
 	for {
-		message, err := c.conn.Read()
+		message, err := c.read()
 		if err != nil {
 			c.room.log.Println(err)
 			c.room.CloseConnection(c)
@@ -54,9 +79,20 @@ func (c *Client) readStart() {
 	}
 }
 
+func (c *Client) write(message []byte) error {
+	size := len(message)
+	sizeByte := make([]byte, 2, size+2)
+	binary.LittleEndian.PutUint16(sizeByte, uint16(size))
+	message = append(sizeByte, message...)
+	if _, err := c.conn.Write(message); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *Client) writeStart() {
 	for {
-		if err := c.conn.Write(<-c.send); err != nil {
+		if err := c.write(<-c.send); err != nil {
 			c.room.log.Println(err)
 			c.room.CloseConnection(c)
 			break

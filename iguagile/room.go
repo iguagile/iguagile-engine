@@ -2,6 +2,7 @@ package iguagile
 
 import (
 	"encoding/binary"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -41,6 +42,16 @@ func NewRoom(serverID int, store Store) *Room {
 		generator:        gen,
 		log:              log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 	}
+}
+
+// Serve handles tcp request from the peer.
+func (r *Room) Serve(conn io.ReadWriteCloser) {
+	client, err := NewClient(r, conn)
+	if err != nil {
+		r.log.Println(err)
+		return
+	}
+	r.Register(client)
 }
 
 // RPC target
