@@ -2,6 +2,7 @@ package iguagile
 
 import (
 	"encoding/binary"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -9,7 +10,7 @@ import (
 	"testing"
 )
 
-const host = "127.0.0.1:4000"
+const tcpHost = "127.0.0.1:4000"
 
 func ListenTCP(t *testing.T) {
 	store := NewRedis(os.Getenv("REDIS_HOST"))
@@ -19,7 +20,7 @@ func ListenTCP(t *testing.T) {
 	}
 	r := NewRoom(serverID, store)
 
-	addr, err := net.ResolveTCPAddr("tcp", host)
+	addr, err := net.ResolveTCPAddr("tcp", tcpHost)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -38,17 +39,7 @@ func ListenTCP(t *testing.T) {
 	}()
 }
 
-type testConn interface {
-	read() ([]byte, error)
-	write([]byte) error
-}
-
-type testTCPConn struct {
-	conn *net.TCPConn
-	*sync.Mutex
-}
-
-func (c *testTCPConn) read() ([]byte, error) {
+func (c *testClient) read() ([]byte, error) {
 	sizeBuf := make([]byte, 2)
 	if _, err := c.conn.Read(sizeBuf); err != nil {
 		return nil, err
@@ -64,13 +55,13 @@ func (c *testTCPConn) read() ([]byte, error) {
 	return buf, nil
 }
 
-func (c *testTCPConn) write(message []byte) error {
+func (c *testClient) write(message []byte) error {
 	size := len(message)
 	sizeBuf := make([]byte, 2)
 	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
 	data := append(sizeBuf, message...)
-	c.Lock()
-	defer c.Unlock()
+	c.writeLock.Lock()
+	defer c.writeLock.Unlock()
 	if _, err := c.conn.Write(data); err != nil {
 		return err
 	}
@@ -78,7 +69,7 @@ func (c *testTCPConn) write(message []byte) error {
 }
 
 type testClient struct {
-	conn           testConn
+	conn           io.ReadWriteCloser
 	isHost         bool
 	clientID       uint32
 	clientIDByte   []byte
@@ -87,9 +78,10 @@ type testClient struct {
 	myObjectIDByte []byte
 	objects        map[uint32]bool
 	objectsLock    *sync.Mutex
+	writeLock      *sync.Mutex
 }
 
-func newTestClient(conn testConn) *testClient {
+func newTestClient(conn io.ReadWriteCloser) *testClient {
 	return &testClient{
 		conn:           conn,
 		clientID:       0,
@@ -99,6 +91,7 @@ func newTestClient(conn testConn) *testClient {
 		myObjectID:     0,
 		myObjectIDByte: make([]byte, 4),
 		otherClients:   make(map[uint32]bool),
+		writeLock:      &sync.Mutex{},
 	}
 }
 
@@ -106,7 +99,7 @@ const clients = 3
 
 func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
-	buf, err := c.conn.read()
+	buf, err := c.read()
 	if err != nil {
 		t.Error(err)
 	}
@@ -121,7 +114,7 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	c.myObjectID = c.clientID | 1
 	binary.LittleEndian.PutUint32(c.myObjectIDByte, c.myObjectID)
 	message := append(append([]byte{Server, instantiate}, c.myObjectIDByte...), []byte("iguana")...)
-	if err := c.conn.write(message); err != nil {
+	if err := c.write(message); err != nil {
 		t.Error(err)
 	}
 
@@ -135,13 +128,13 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
 		for i := 0; i < 100; i++ {
-			if err := c.conn.write(transformMessage); err != nil {
+			if err := c.write(transformMessage); err != nil {
 				t.Error(err)
 			}
 		}
 
 		for i := 0; i < 100; i++ {
-			if err := c.conn.write(rpcMessage); err != nil {
+			if err := c.write(rpcMessage); err != nil {
 				t.Error(err)
 			}
 		}
@@ -155,7 +148,7 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 				binary.LittleEndian.PutUint32(objectIDByte, objectID)
 				log.Printf("send request %v\n", objectID)
 				message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
-				if err := c.conn.write(message); err != nil {
+				if err := c.write(message); err != nil {
 					t.Error(err)
 				}
 			}
@@ -164,14 +157,14 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			objectIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(objectIDByte, c.myObjectID)
 			message := append([]byte{Server, destroy}, objectIDByte...)
-			if err := c.conn.write(message); err != nil {
+			if err := c.write(message); err != nil {
 				t.Error(err)
 			}
 		}
 	}()
 	for {
 		// Start receiving messages.
-		buf, err := c.conn.read()
+		buf, err := c.read()
 		if err != nil {
 			t.Error(err)
 		}
@@ -216,13 +209,13 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 			clientIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(clientIDByte, clientID)
 			message := append(append([]byte{Server, transferObjectControlAuthority}, payload...), clientIDByte...)
-			if err := c.conn.write(message); err != nil {
+			if err := c.write(message); err != nil {
 				t.Error(err)
 			}
 		case transferObjectControlAuthority:
 			log.Printf("transfer %v\n", binary.LittleEndian.Uint32(payload))
 			message := append([]byte{Server, destroy}, payload...)
-			if err := c.conn.write(message); err != nil {
+			if err := c.write(message); err != nil {
 				t.Error(err)
 			}
 		case transform:
@@ -245,7 +238,7 @@ func TestConnectionTCP(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(clients)
 
-	addr, err := net.ResolveTCPAddr("tcp", host)
+	addr, err := net.ResolveTCPAddr("tcp", tcpHost)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -255,7 +248,7 @@ func TestConnectionTCP(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		client := newTestClient(&testTCPConn{conn, &sync.Mutex{}})
+		client := newTestClient(conn)
 		go client.run(t, wg)
 	}
 
