@@ -84,7 +84,7 @@ func TestConnectionQUIC(t *testing.T) {
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
-		NextProtos:         []string{"quic-echo-example"},
+		NextProtos:         []string{"iguagile"},
 	}
 
 	for i := 0; i < clients; i++ {
