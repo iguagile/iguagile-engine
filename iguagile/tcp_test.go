@@ -33,7 +33,7 @@ func ListenTCP(t *testing.T) {
 			if err != nil {
 				t.Errorf("%v", err)
 			}
-			ServeTCP(r, conn)
+			r.Serve(conn)
 		}
 	}()
 }
