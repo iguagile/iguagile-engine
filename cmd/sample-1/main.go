@@ -34,6 +34,6 @@ func main() {
 			log.Println(err)
 			continue
 		}
-		iguagile.ServeTCP(room, conn)
+		room.Serve(conn)
 	}
 }
