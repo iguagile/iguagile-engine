@@ -43,7 +43,7 @@ func ListenQUIC(t *testing.T) {
 				continue
 			}
 
-			stream, err := session.AcceptStream(context.Background())
+			stream, err := session.OpenStreamSync(context.Background())
 			if err != nil {
 				t.Error(err)
 				continue
@@ -93,7 +93,7 @@ func TestConnectionQUIC(t *testing.T) {
 			t.Error(err)
 		}
 
-		stream, err := session.OpenStreamSync(context.Background())
+		stream, err := session.AcceptStream(context.Background())
 		if err != nil {
 			t.Error(err)
 		}
