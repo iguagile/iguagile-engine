@@ -2,6 +2,7 @@ package iguagile
 
 import (
 	"encoding/binary"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -36,17 +37,7 @@ func ListenBenchTCP(b *testing.B) {
 	}()
 }
 
-type benchConn interface {
-	read() ([]byte, error)
-	write([]byte) error
-}
-
-type benchTCPConn struct {
-	conn *net.TCPConn
-	*sync.Mutex
-}
-
-func (c *benchTCPConn) read() ([]byte, error) {
+func (c *benchClient) read() ([]byte, error) {
 	sizeBuf := make([]byte, 2)
 	if _, err := c.conn.Read(sizeBuf); err != nil {
 		return nil, err
@@ -62,13 +53,13 @@ func (c *benchTCPConn) read() ([]byte, error) {
 	return buf, nil
 }
 
-func (c *benchTCPConn) write(message []byte) error {
+func (c *benchClient) write(message []byte) error {
 	size := len(message)
 	sizeBuf := make([]byte, 2)
 	binary.LittleEndian.PutUint16(sizeBuf, uint16(size))
 	data := append(sizeBuf, message...)
-	c.Lock()
-	defer c.Unlock()
+	c.writeLock.Lock()
+	defer c.writeLock.Unlock()
 	if _, err := c.conn.Write(data); err != nil {
 		return err
 	}
@@ -76,7 +67,7 @@ func (c *benchTCPConn) write(message []byte) error {
 }
 
 type benchClient struct {
-	conn           benchConn
+	conn           io.ReadWriteCloser
 	isHost         bool
 	clientID       uint32
 	clientIDByte   []byte
@@ -85,9 +76,10 @@ type benchClient struct {
 	myObjectIDByte []byte
 	objects        map[uint32]bool
 	objectsLock    *sync.Mutex
+	writeLock      *sync.Mutex
 }
 
-func newBenchClient(conn benchConn) *benchClient {
+func newBenchClient(conn io.ReadWriteCloser) *benchClient {
 	return &benchClient{
 		conn:           conn,
 		clientID:       0,
@@ -97,6 +89,7 @@ func newBenchClient(conn benchConn) *benchClient {
 		myObjectID:     0,
 		myObjectIDByte: make([]byte, 4),
 		otherClients:   make(map[uint32]bool),
+		writeLock:      &sync.Mutex{},
 	}
 }
 
@@ -104,7 +97,7 @@ const BenchClients = 75
 
 func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
-	buf, err := c.conn.read()
+	buf, err := c.read()
 	if err != nil {
 		b.Error(err)
 	}
@@ -119,7 +112,7 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 	c.myObjectID = c.clientID | 1
 	binary.LittleEndian.PutUint32(c.myObjectIDByte, c.myObjectID)
 	message := append(append([]byte{Server, instantiate}, c.myObjectIDByte...), []byte("iguana")...)
-	if err := c.conn.write(message); err != nil {
+	if err := c.write(message); err != nil {
 		b.Error(err)
 	}
 
@@ -133,13 +126,13 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
 		for i := 0; i < 100; i++ {
-			if err := c.conn.write(transformMessage); err != nil {
+			if err := c.write(transformMessage); err != nil {
 				b.Error(err)
 			}
 		}
 
 		for i := 0; i < 100; i++ {
-			if err := c.conn.write(rpcMessage); err != nil {
+			if err := c.write(rpcMessage); err != nil {
 				b.Error(err)
 			}
 		}
@@ -150,7 +143,7 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 				objectIDByte := make([]byte, 4)
 				binary.LittleEndian.PutUint32(objectIDByte, objectID)
 				message := append([]byte{Server, requestObjectControlAuthority}, objectIDByte...)
-				if err := c.conn.write(message); err != nil {
+				if err := c.write(message); err != nil {
 					b.Error(err)
 				}
 			}
@@ -159,14 +152,14 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 			objectIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(objectIDByte, c.myObjectID)
 			message := append([]byte{Server, destroy}, objectIDByte...)
-			if err := c.conn.write(message); err != nil {
+			if err := c.write(message); err != nil {
 				b.Error(err)
 			}
 		}
 	}()
 	for {
 		// Start receiving messages.
-		buf, err := c.conn.read()
+		buf, err := c.read()
 		if err != nil {
 			b.Error(err)
 		}
@@ -211,13 +204,13 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 			clientIDByte := make([]byte, 4)
 			binary.LittleEndian.PutUint32(clientIDByte, clientID)
 			message := append(append([]byte{Server, transferObjectControlAuthority}, payload...), clientIDByte...)
-			if err := c.conn.write(message); err != nil {
+			if err := c.write(message); err != nil {
 				b.Error(err)
 			}
 		case transferObjectControlAuthority:
 			log.Printf("transfer %v\n", binary.LittleEndian.Uint32(payload))
 			message := append([]byte{Server, destroy}, payload...)
-			if err := c.conn.write(message); err != nil {
+			if err := c.write(message); err != nil {
 				b.Error(err)
 			}
 		case transform:
@@ -250,7 +243,7 @@ func BenchmarkConnectionTCP(b *testing.B) {
 		if err != nil {
 			b.Error(err)
 		}
-		client := newBenchClient(&benchTCPConn{conn, &sync.Mutex{}})
+		client := newBenchClient(conn)
 		go client.run(b, wg)
 	}
 
