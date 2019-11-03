@@ -13,10 +13,10 @@ import (
 
 type (
 	// Target is the target to send data to.
-	Target             byte
+	Target byte
 
 	// MessageType is information for identifying the message type.
-	MessageType        byte
+	MessageType byte
 
 	// ReceivedBinaryFunc is a function called when a binary message is received.
 	ReceivedBinaryFunc func(senderID int, data []byte) error
