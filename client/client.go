@@ -22,6 +22,7 @@ type (
 	ReceivedBinaryFunc func(senderID int, data []byte) error
 )
 
+// RPC target
 const (
 	AllClients = Target(iota)
 	OtherClients
