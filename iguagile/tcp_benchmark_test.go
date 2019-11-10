@@ -203,12 +203,12 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 }
 
 func BenchmarkConnectionTCP(b *testing.B) {
-	listener, err := net.Listen("tcp", tcpTestHost)
+	listener, err := net.Listen("tcp", tcpBenchHost)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	if err := listen(b, listener); err != nil {
+	if err := listen(b, listener, BenchClients); err != nil {
 		b.Fatal(err)
 	}
 

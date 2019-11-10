@@ -10,7 +10,7 @@ import (
 
 const quicBenchHost = "127.0.0.1:4101"
 
-func BenchmarkConnectionQUIC(b *testing.B) {
+func kBenchmarkConnectionQUIC(b *testing.B) {
 	tlsConfig, err := generateTLSConfig()
 	if err != nil {
 		b.Fatal(err)
@@ -21,14 +21,14 @@ func BenchmarkConnectionQUIC(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	if err := listen(b, &quicListener{listener}); err != nil {
+	if err := listen(b, &quicListener{listener}, BenchClients); err != nil {
 		b.Fatal(err)
 	}
 
 	wg := &sync.WaitGroup{}
-	wg.Add(maxUser)
+	wg.Add(BenchClients)
 
-	for i := 0; i < maxUser; i++ {
+	for i := 0; i < BenchClients; i++ {
 		session, err := quic.DialAddr(quicBenchHost, tlsConfig, nil)
 		if err != nil {
 			b.Error(err)

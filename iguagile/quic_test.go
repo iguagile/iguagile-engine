@@ -75,7 +75,7 @@ func generateTLSConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func TestConnectionQUIC(t *testing.T) {
+func jTestConnectionQUIC(t *testing.T) {
 	tlsConfig, err := generateTLSConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -86,14 +86,14 @@ func TestConnectionQUIC(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := listen(t, &quicListener{listener}); err != nil {
+	if err := listen(t, &quicListener{listener}, testClients); err != nil {
 		t.Fatal(err)
 	}
 
 	wg := &sync.WaitGroup{}
-	wg.Add(maxUser)
+	wg.Add(testClients)
 
-	for i := 0; i < maxUser; i++ {
+	for i := 0; i < testClients; i++ {
 		session, err := quic.DialAddr(quicTestHost, tlsConfig, nil)
 		if err != nil {
 			t.Error(err)

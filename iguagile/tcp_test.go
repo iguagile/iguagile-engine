@@ -12,7 +12,8 @@ import (
 
 const (
 	tcpTestHost = "127.0.0.1:4000"
-	maxUser     = 3
+	maxUser     = 100
+	testClients = 3
 )
 
 var token = []byte("token")
@@ -26,7 +27,7 @@ var config = &RoomConfig{
 	Token:           token,
 }
 
-func listen(tb testing.TB, listener net.Listener) error {
+func listen(tb testing.TB, listener net.Listener, clients int) error {
 	store, err := NewRedis(os.Getenv("REDIS_HOST"))
 	if err != nil {
 		return err
@@ -38,7 +39,7 @@ func listen(tb testing.TB, listener net.Listener) error {
 	}
 
 	go func() {
-		for i := 0; i < maxUser; i++ {
+		for i := 0; i < clients; i++ {
 			conn, err := listener.Accept()
 			if err != nil {
 				tb.Error(err)
@@ -132,7 +133,7 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	rpcMessage := append([]byte{OtherClients, rpc}, []byte("iguagile")...)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(maxUser)
+	wg.Add(testClients)
 	go func() {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
@@ -248,14 +249,14 @@ func TestConnectionTCP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := listen(t, listener); err != nil {
+	if err := listen(t, listener, testClients); err != nil {
 		t.Fatal(err)
 	}
 
 	wg := &sync.WaitGroup{}
-	wg.Add(maxUser)
+	wg.Add(testClients)
 
-	for i := 0; i < maxUser; i++ {
+	for i := 0; i < testClients; i++ {
 		conn, err := net.Dial("tcp", tcpTestHost)
 		if err != nil {
 			t.Error(err)
