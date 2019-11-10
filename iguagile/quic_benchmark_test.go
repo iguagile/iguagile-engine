@@ -16,7 +16,7 @@ func BenchmarkConnectionQUIC(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	listener, err := quic.ListenAddr(quicTestHost, tlsConfig, nil)
+	listener, err := quic.ListenAddr(quicBenchHost, tlsConfig, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
