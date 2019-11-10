@@ -26,9 +26,9 @@ func BenchmarkConnectionQUIC(b *testing.B) {
 	}
 
 	wg := &sync.WaitGroup{}
-	wg.Add(BenchClients)
+	wg.Add(maxUser)
 
-	for i := 0; i < BenchClients; i++ {
+	for i := 0; i < maxUser; i++ {
 		session, err := quic.DialAddr(quicBenchHost, tlsConfig, nil)
 		if err != nil {
 			b.Error(err)

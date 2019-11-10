@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-const tcpBenchHost = ":127.0.0.1:4100"
+const tcpBenchHost = "127.0.0.1:4100"
 
 func (c *benchClient) read() ([]byte, error) {
 	sizeBuf := make([]byte, 2)
