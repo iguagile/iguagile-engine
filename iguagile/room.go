@@ -26,7 +26,7 @@ type Room struct {
 	store            Store
 }
 
-// RoomConfig
+// RoomConfig is room config.
 type RoomConfig struct {
 	RoomID          int
 	ApplicationName string

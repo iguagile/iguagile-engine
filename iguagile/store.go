@@ -52,6 +52,7 @@ func (r *Redis) UpdateRoom(room *pb.Room) error {
 	return nil
 }
 
+// UnregisterRoom unregisters room from redis.
 func (r *Redis) UnregisterRoom(room *pb.Room) error {
 	// TODO implement method.
 	return nil
