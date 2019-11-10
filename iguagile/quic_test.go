@@ -8,50 +8,47 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"math/big"
-	"os"
+	"net"
 	"sync"
 	"testing"
 
 	"github.com/lucas-clemente/quic-go"
 )
 
-const quicHost = "127.0.0.1:4100"
+const quicTestHost = "127.0.0.1:4001"
 
-func ListenQUIC(t *testing.T) {
-	store := NewRedis(os.Getenv("REDIS_HOST"))
-	serverID, err := store.GenerateServerID()
+type quicListener struct {
+	quic.Listener
+}
+
+type quicStream struct {
+	quic.Stream
+}
+
+// LocalAddr is a dummy method to implement listener.
+func (s *quicStream) LocalAddr() net.Addr {
+	return nil
+}
+
+// RemoteAddr is a dummy method to implement listener.
+func (s *quicStream) RemoteAddr() net.Addr {
+	return nil
+}
+
+// Accept accepts quic session and accepts stream.
+func (l *quicListener) Accept() (net.Conn, error) {
+	session, err := l.Listener.Accept(context.Background())
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	r := NewRoom(serverID, store)
 
-	tlsConfig, err := generateTLSConfig()
+	s, err := session.OpenStreamSync(context.Background())
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 
-	listener, err := quic.ListenAddr(quicHost, tlsConfig, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go func() {
-		for {
-			session, err := listener.Accept(context.Background())
-			if err != nil {
-				t.Error(err)
-				continue
-			}
-
-			stream, err := session.OpenStreamSync(context.Background())
-			if err != nil {
-				t.Error(err)
-				continue
-			}
-
-			r.Serve(stream)
-		}
-	}()
+	stream := &quicStream{s}
+	return stream, nil
 }
 
 func generateTLSConfig() (*tls.Config, error) {
@@ -72,23 +69,32 @@ func generateTLSConfig() (*tls.Config, error) {
 		return nil, err
 	}
 	return &tls.Config{
-		Certificates: []tls.Certificate{tlsCert},
-		NextProtos:   []string{"iguagile"},
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{tlsCert},
+		NextProtos:         []string{"iguagile"},
 	}, nil
 }
 
 func TestConnectionQUIC(t *testing.T) {
-	ListenQUIC(t)
-	wg := &sync.WaitGroup{}
-	wg.Add(clients)
-
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
-		NextProtos:         []string{"iguagile"},
+	tlsConfig, err := generateTLSConfig()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	for i := 0; i < clients; i++ {
-		session, err := quic.DialAddr(quicHost, tlsConfig, nil)
+	listener, err := quic.ListenAddr(quicTestHost, tlsConfig, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := listen(t, &quicListener{listener}); err != nil {
+		t.Fatal(err)
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(maxUser)
+
+	for i := 0; i < maxUser; i++ {
+		session, err := quic.DialAddr(quicTestHost, tlsConfig, nil)
 		if err != nil {
 			t.Error(err)
 		}

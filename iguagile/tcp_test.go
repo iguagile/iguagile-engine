@@ -10,33 +10,44 @@ import (
 	"testing"
 )
 
-const tcpHost = "127.0.0.1:4000"
+const (
+	tcpTestHost = "127.0.0.1:4000"
+	maxUser     = 3
+)
 
-func ListenTCP(t *testing.T) {
-	store := NewRedis(os.Getenv("REDIS_HOST"))
-	serverID, err := store.GenerateServerID()
-	if err != nil {
-		log.Fatal(err)
-	}
-	r := NewRoom(serverID, store)
+var token = []byte("token")
 
-	addr, err := net.ResolveTCPAddr("tcp", tcpHost)
+var config = &RoomConfig{
+	RoomID:          0,
+	ApplicationName: "test-app",
+	Version:         "0.0.0-test",
+	Password:        "password",
+	MaxUser:         maxUser,
+	Token:           token,
+}
+
+func listen(tb testing.TB, listener net.Listener) error {
+	store, err := NewRedis(os.Getenv("REDIS_HOST"))
 	if err != nil {
-		t.Errorf("%v", err)
+		return err
 	}
-	listener, err := net.ListenTCP("tcp", addr)
-	if err != nil && err.Error() != "read: connection reset by peer" {
-		t.Errorf("%v", err)
+
+	room, err := NewRoom(store, config)
+	if err != nil {
+		return err
 	}
+
 	go func() {
-		for i := 0; i < clients; i++ {
-			conn, err := listener.AcceptTCP()
+		for i := 0; i < maxUser; i++ {
+			conn, err := listener.Accept()
 			if err != nil {
-				t.Errorf("%v", err)
+				tb.Error(err)
 			}
-			r.Serve(conn)
+			room.Serve(conn)
 		}
 	}()
+
+	return nil
 }
 
 func (c *testClient) read() ([]byte, error) {
@@ -95,8 +106,6 @@ func newTestClient(conn io.ReadWriteCloser) *testClient {
 	}
 }
 
-const clients = 3
-
 func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	//First receive register message and get client id.
 	buf, err := c.read()
@@ -123,7 +132,7 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 	rpcMessage := append([]byte{OtherClients, rpc}, []byte("iguagile")...)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(clients)
+	wg.Add(maxUser)
 	go func() {
 		// Wait for the object to be instantiated before starting sending messages.
 		wg.Wait()
@@ -234,17 +243,20 @@ func (c *testClient) run(t *testing.T, waitGroup *sync.WaitGroup) {
 }
 
 func TestConnectionTCP(t *testing.T) {
-	ListenTCP(t)
-	wg := &sync.WaitGroup{}
-	wg.Add(clients)
-
-	addr, err := net.ResolveTCPAddr("tcp", tcpHost)
+	listener, err := net.Listen("tcp", tcpTestHost)
 	if err != nil {
-		t.Errorf("%v", err)
+		t.Fatal(err)
 	}
 
-	for i := 0; i < clients; i++ {
-		conn, err := net.DialTCP("tcp", nil, addr)
+	if err := listen(t, listener); err != nil {
+		t.Fatal(err)
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(maxUser)
+
+	for i := 0; i < maxUser; i++ {
+		conn, err := net.Dial("tcp", tcpTestHost)
 		if err != nil {
 			t.Error(err)
 		}

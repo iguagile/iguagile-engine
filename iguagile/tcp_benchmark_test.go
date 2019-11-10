@@ -5,37 +5,11 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"sync"
 	"testing"
 )
 
-func ListenBenchTCP(b *testing.B) {
-	store := NewRedis(os.Getenv("REDIS_HOST"))
-	serverID, err := store.GenerateServerID()
-	if err != nil {
-		log.Fatal(err)
-	}
-	r := NewRoom(serverID, store)
-
-	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:4021")
-	if err != nil {
-		b.Errorf("%v", err)
-	}
-	listener, err := net.ListenTCP("tcp", addr)
-	if err != nil && err.Error() != "read: connection reset by peer" {
-		b.Errorf("%v", err)
-	}
-	go func() {
-		for i := 0; i < BenchClients; i++ {
-			conn, err := listener.AcceptTCP()
-			if err != nil {
-				b.Errorf("%v", err)
-			}
-			r.Serve(conn)
-		}
-	}()
-}
+const tcpBenchHost = ":127.0.0.1:4100"
 
 func (c *benchClient) read() ([]byte, error) {
 	sizeBuf := make([]byte, 2)
@@ -229,17 +203,20 @@ func (c *benchClient) run(b *testing.B, waitGroup *sync.WaitGroup) {
 }
 
 func BenchmarkConnectionTCP(b *testing.B) {
-	ListenBenchTCP(b)
+	listener, err := net.Listen("tcp", tcpTestHost)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	if err := listen(b, listener); err != nil {
+		b.Fatal(err)
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(BenchClients)
 
-	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:4021")
-	if err != nil {
-		b.Errorf("%v", err)
-	}
-
 	for i := 0; i < BenchClients; i++ {
-		conn, err := net.DialTCP("tcp", nil, addr)
+		conn, err := net.Dial("tcp", tcpBenchHost)
 		if err != nil {
 			b.Error(err)
 		}

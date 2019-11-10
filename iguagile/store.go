@@ -1,16 +1,19 @@
 package iguagile
 
 import (
-	"log"
-
 	"github.com/gomodule/redigo/redis"
+	pb "github.com/iguagile/iguagile-room-proto/room"
 )
 
 // Store is an interface for connecting to backend storage and storing data.
 type Store interface {
 	Close() error
-	GenerateRoomID(serverID int) (int, error)
 	GenerateServerID() (int, error)
+	RegisterServer(*pb.Server) error
+	UnregisterServer(*pb.Server) error
+	RegisterRoom(*pb.Room) error
+	UpdateRoom(*pb.Room) error
+	UnregisterRoom(*pb.Room) error
 }
 
 // Redis is a structure that wraps goredis to make it easy to use.
@@ -25,10 +28,33 @@ func (r *Redis) GenerateServerID() (int, error) {
 	return i << 16, err
 }
 
-// GenerateRoomID numbers unique RoomIDs.
-func (r *Redis) GenerateRoomID(serverID int) (int, error) {
-	i, err := redis.Int(r.conn.Do("INCR", "room_id"))
-	return i | serverID, err
+// RegisterServer registers server to redis.
+func (r *Redis) RegisterServer(server *pb.Server) error {
+	// TODO implement method.
+	return nil
+}
+
+// UnregisterServer unregisters server from redis.
+func (r *Redis) UnregisterServer(server *pb.Server) error {
+	// TODO implement method.
+	return nil
+}
+
+// RegisterRoom register room to redis.
+func (r *Redis) RegisterRoom(room *pb.Room) error {
+	// TODO implement method.
+	return nil
+}
+
+// UpdateRoom updates room information.
+func (r *Redis) UpdateRoom(room *pb.Room) error {
+	// TODO implement method.
+	return nil
+}
+
+func (r *Redis) UnregisterRoom(room *pb.Room) error {
+	// TODO implement method.
+	return nil
 }
 
 // Close is a method to release resources collectively.
@@ -37,36 +63,10 @@ func (r *Redis) Close() error {
 }
 
 // NewRedis is a constructor of Redis. Perform initialization at once.
-func NewRedis(hostname string) *Redis {
+func NewRedis(hostname string) (*Redis, error) {
 	conn, err := redis.Dial("tcp", hostname)
 	if err != nil {
-		log.Println(err)
-		log.Fatal("failed to connect backend storage.")
-
+		return nil, err
 	}
-	return &Redis{conn}
-}
-
-// DummyStore is a structure for debugging.
-type DummyStore struct{}
-
-// GenerateServerID always returns zero and nil.
-func (d *DummyStore) GenerateServerID() (int, error) {
-	return 0, nil
-}
-
-// GenerateRoomID always returns zero and nil.
-// Use only when debugging only one room.
-func (d *DummyStore) GenerateRoomID(serverID int) (int, error) {
-	return 0, nil
-}
-
-// Close is dummy method for implementing Store interface.
-func (d *DummyStore) Close() error {
-	return nil
-}
-
-// NewDummyStore is a constructor of DummyStore.
-func NewDummyStore() (*DummyStore, error) {
-	return &DummyStore{}, nil
+	return &Redis{conn}, nil
 }

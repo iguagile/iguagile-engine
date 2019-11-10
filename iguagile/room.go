@@ -8,40 +8,51 @@ import (
 	"os"
 
 	"github.com/iguagile/iguagile-engine/data"
+	pb "github.com/iguagile/iguagile-room-proto/room"
 )
 
 // Room maintains the set of active clients and broadcasts messages to the
 // clients.
 type Room struct {
-	id               int
 	clientManager    *ClientManager
 	objectManager    *GameObjectManager
 	rpcBufferManager *RPCBufferManager
 	generator        *IDGenerator
 	log              *log.Logger
 	host             *Client
+	config           *RoomConfig
+	creatorConnected bool
+	room             *pb.Room
+	store            Store
+}
+
+// RoomConfig
+type RoomConfig struct {
+	RoomID          int
+	ApplicationName string
+	Version         string
+	Password        string
+	MaxUser         int
+	Token           []byte
 }
 
 // NewRoom is Room constructed.
-func NewRoom(serverID int, store Store) *Room {
-	roomID, err := store.GenerateRoomID(serverID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func NewRoom(store Store, config *RoomConfig) (*Room, error) {
 	gen, err := NewIDGenerator()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	return &Room{
-		id:               roomID,
 		clientManager:    NewClientManager(),
 		objectManager:    NewGameObjectManager(),
 		rpcBufferManager: NewRPCBufferManager(),
 		generator:        gen,
 		log:              log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
-	}
+		config:           config,
+		store:            store,
+		room:             &pb.Room{},
+	}, nil
 }
 
 // Serve handles tcp request from the peer.
@@ -50,6 +61,11 @@ func (r *Room) Serve(conn io.ReadWriteCloser) {
 	if err != nil {
 		r.log.Println(err)
 		return
+	}
+
+	r.room.ConnectedUser = int32(r.clientManager.count + 1)
+	if err := r.store.UpdateRoom(r.room); err != nil {
+		r.log.Println(err)
 	}
 	r.Register(client)
 }
