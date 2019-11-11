@@ -115,6 +115,10 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 		return fmt.Errorf("the room does not exist %v", roomID)
 	}
 
+	if room.clientManager.count >= room.config.MaxUser {
+		return fmt.Errorf("connected clients exceed room capacity %v %v", room.config.MaxUser, room.clientManager.count)
+	}
+
 	applicationName, err := client.read()
 	if err != nil {
 		return err
