@@ -1,6 +1,7 @@
 module github.com/iguagile/iguagile-engine
 
 require (
+	github.com/golang/protobuf v1.3.2
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/iguagile/iguagile-room-proto v0.0.0-20191110093532-2443f5e9df1c
 	github.com/lucas-clemente/quic-go v0.12.1

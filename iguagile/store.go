@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/gomodule/redigo/redis"
 	pb "github.com/iguagile/iguagile-room-proto/room"
 )
@@ -21,6 +22,14 @@ type Redis struct {
 	conn redis.Conn
 }
 
+const (
+	registerServerMessage = iota
+	unregisterServerMessage
+	registerRoomMessage
+	unregisterRoomMessage
+	updateRoomMessage
+)
+
 // GenerateServerID is a method to number unique ServerID.
 func (r *Redis) GenerateServerID() (int, error) {
 	// TODO CHECK TO 1 << 16 over.
@@ -30,31 +39,86 @@ func (r *Redis) GenerateServerID() (int, error) {
 
 // RegisterServer registers server to redis.
 func (r *Redis) RegisterServer(server *pb.Server) error {
-	// TODO implement method.
+	serverProto, err := proto.Marshal(server)
+	if err != nil {
+		return err
+	}
+
+	message := append([]byte{registerServerMessage}, serverProto...)
+
+	_, err = r.conn.Do("PUBLISH", "channel_servers", message)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // UnregisterServer unregisters server from redis.
 func (r *Redis) UnregisterServer(server *pb.Server) error {
-	// TODO implement method.
+	serverProto, err := proto.Marshal(server)
+	if err != nil {
+		return err
+	}
+
+	message := append([]byte{unregisterServerMessage}, serverProto...)
+
+	_, err = r.conn.Do("PUBLISH", "channel_servers", message)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // RegisterRoom register room to redis.
 func (r *Redis) RegisterRoom(room *pb.Room) error {
-	// TODO implement method.
+	serverProto, err := proto.Marshal(room)
+	if err != nil {
+		return err
+	}
+
+	message := append([]byte{registerRoomMessage}, serverProto...)
+
+	_, err = r.conn.Do("PUBLISH", "channel_rooms", message)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // UpdateRoom updates room information.
 func (r *Redis) UpdateRoom(room *pb.Room) error {
-	// TODO implement method.
+	serverProto, err := proto.Marshal(room)
+	if err != nil {
+		return err
+	}
+
+	message := append([]byte{updateRoomMessage}, serverProto...)
+
+	_, err = r.conn.Do("PUBLISH", "channel_rooms", message)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // UnregisterRoom unregisters room from redis.
 func (r *Redis) UnregisterRoom(room *pb.Room) error {
-	// TODO implement method.
+	serverProto, err := proto.Marshal(room)
+	if err != nil {
+		return err
+	}
+
+	message := append([]byte{unregisterRoomMessage}, serverProto...)
+
+	_, err = r.conn.Do("PUBLISH", "channel_rooms", message)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
