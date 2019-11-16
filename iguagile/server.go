@@ -5,11 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
-	"net/http"
 	"reflect"
+	"strconv"
 
 	pb "github.com/iguagile/iguagile-room-proto/room"
 	"google.golang.org/grpc"
@@ -26,19 +25,24 @@ type RoomServer struct {
 }
 
 // NewRoomServer is a constructor of RoomServer.
-func NewRoomServer(store Store, port int) (*RoomServer, error) {
+func NewRoomServer(store Store, address string) (*RoomServer, error) {
+	host, portStr, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return nil, err
+	}
+
 	serverID, err := store.GenerateServerID()
 	if err != nil {
 		return nil, err
 	}
 
-	ip, err := GetIP()
-	if err != nil {
-		return nil, err
-	}
-
 	server := &pb.Server{
-		Host:     ip,
+		Host:     host,
 		Port:     int32(port),
 		ServerId: int32(serverID),
 	}
@@ -50,21 +54,6 @@ func NewRoomServer(store Store, port int) (*RoomServer, error) {
 		logger:   &log.Logger{},
 		server:   server,
 	}, nil
-}
-
-// GetIP returns ip address.
-func GetIP() (string, error) {
-	response, err := http.Get("https://api.ipify.org")
-	if err != nil {
-		return "", err
-	}
-
-	ip, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(ip), nil
 }
 
 // Run starts api and room server.

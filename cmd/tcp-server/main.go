@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 
 	"github.com/iguagile/iguagile-engine/iguagile"
@@ -14,13 +16,34 @@ const (
 	apiPort  = 5000
 )
 
+func getIP() (string, error) {
+	response, err := http.Get("https://api.ipify.org")
+	if err != nil {
+		return "", err
+	}
+
+	ip, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(ip), nil
+}
+
 func run() error {
 	store, err := iguagile.NewRedis(os.Getenv("REDIS_HOST"))
 	if err != nil {
 		return err
 	}
 
-	server, err := iguagile.NewRoomServer(store, roomPort)
+	roomIP, err := getIP()
+	if err != nil {
+		return err
+	}
+
+	roomHost := fmt.Sprintf("%v, %v", roomIP, roomPort)
+
+	server, err := iguagile.NewRoomServer(store, roomHost)
 	if err != nil {
 		return err
 	}
