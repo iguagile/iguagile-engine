@@ -10,6 +10,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	pb "github.com/iguagile/iguagile-room-proto/room"
@@ -18,12 +19,14 @@ import (
 
 // RoomServer is server manages rooms.
 type RoomServer struct {
-	serverID    int
-	rooms       *sync.Map
-	store       Store
-	idGenerator IDGenerator
-	logger      *log.Logger
-	serverProto *pb.Server
+	serverID             int
+	rooms                *sync.Map
+	store                Store
+	idGenerator          IDGenerator
+	logger               *log.Logger
+	serverProto          *pb.Server
+	RoomUpdateDuration   time.Duration
+	ServerUpdateDuration time.Duration
 }
 
 // NewRoomServer is a constructor of RoomServer.
@@ -53,11 +56,13 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 	}
 
 	return &RoomServer{
-		serverID:    serverID,
-		rooms:       &sync.Map{},
-		store:       store,
-		logger:      &log.Logger{},
-		serverProto: server,
+		serverID:             serverID,
+		rooms:                &sync.Map{},
+		store:                store,
+		logger:               &log.Logger{},
+		serverProto:          server,
+		RoomUpdateDuration:   time.Minute * 3,
+		ServerUpdateDuration: time.Minute * 5,
 	}, nil
 }
 
@@ -77,6 +82,33 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 	if err := s.store.RegisterServer(s.serverProto); err != nil {
 		return err
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func(ctx context.Context) {
+		serverTicker := time.NewTicker(s.ServerUpdateDuration)
+		roomTicker := time.NewTicker(s.RoomUpdateDuration)
+		select {
+		case <-serverTicker.C:
+			if err := s.store.RegisterServer(s.serverProto); err != nil {
+				s.logger.Println(err)
+			}
+		case <-roomTicker.C:
+			s.rooms.Range(func(_, value interface{}) bool {
+				room, ok := value.(*Room)
+				if !ok {
+					return true
+				}
+				if err := s.store.RegisterRoom(room.roomProto); err != nil {
+					s.logger.Println(err)
+				}
+				return true
+			})
+		case <-ctx.Done():
+			return
+		}
+	}(ctx)
 
 	for {
 		conn, err := roomListener.Accept()
