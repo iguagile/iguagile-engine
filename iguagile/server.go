@@ -1,15 +1,16 @@
 package iguagile
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
 	"net"
-	"reflect"
 	"strconv"
 
+	"github.com/google/uuid"
 	pb "github.com/iguagile/iguagile-room-proto/room"
 	"google.golang.org/grpc"
 )
@@ -41,10 +42,13 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 		return nil, err
 	}
 
+	token := uuid.New()
+
 	server := &pb.Server{
 		Host:     host,
 		Port:     int32(port),
 		ServerId: int32(serverID),
+		Token:    token[:],
 	}
 
 	return &RoomServer{
@@ -141,7 +145,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 			return err
 		}
 
-		if !reflect.DeepEqual(token, room.config.Token) {
+		if !bytes.Equal(token, room.config.Token) {
 			return fmt.Errorf("invalid token %v %v", token, room.config.Token)
 		}
 
@@ -152,8 +156,14 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	return nil
 }
 
+var invalidTokenErr = fmt.Errorf("invalid room server api token")
+
 // CreateRoom creates new room.
 func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomRequest) (*pb.CreateRoomResponse, error) {
+	if !bytes.Equal(request.ServerToken, s.server.Token) {
+		return nil, invalidTokenErr
+	}
+
 	roomID, err := s.idGenerator.Generate()
 	if err != nil {
 		return nil, err
@@ -165,7 +175,7 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 		Version:         request.Version,
 		Password:        request.Password,
 		MaxUser:         int(request.MaxUser),
-		Token:           request.Token,
+		Token:           request.RoomToken,
 	}
 
 	r, err := NewRoom(s.store, config)
