@@ -22,7 +22,7 @@ type RoomServer struct {
 	store       Store
 	idGenerator IDGenerator
 	logger      *log.Logger
-	server      *pb.Server
+	serverProto *pb.Server
 }
 
 // NewRoomServer is a constructor of RoomServer.
@@ -52,11 +52,11 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 	}
 
 	return &RoomServer{
-		serverID: serverID,
-		rooms:    make(map[int]*Room),
-		store:    store,
-		logger:   &log.Logger{},
-		server:   server,
+		serverID:    serverID,
+		rooms:       make(map[int]*Room),
+		store:       store,
+		logger:      &log.Logger{},
+		serverProto: server,
 	}, nil
 }
 
@@ -73,7 +73,7 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 		_ = server.Serve(apiListener)
 	}()
 
-	if err := s.store.RegisterServer(s.server); err != nil {
+	if err := s.store.RegisterServer(s.serverProto); err != nil {
 		return err
 	}
 
@@ -149,6 +149,12 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 			return fmt.Errorf("invalid token %v %v", token, room.config.Token)
 		}
 
+		room.roomProto.ConnectedUser = 1
+
+		if err := s.store.RegisterRoom(room.roomProto); err != nil {
+			return err
+		}
+
 		room.creatorConnected = true
 	}
 
@@ -160,7 +166,7 @@ var errInvalidToken = fmt.Errorf("invalid room server api token")
 
 // CreateRoom creates new room.
 func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomRequest) (*pb.CreateRoomResponse, error) {
-	if !bytes.Equal(request.ServerToken, s.server.Token) {
+	if !bytes.Equal(request.ServerToken, s.serverProto.Token) {
 		return nil, errInvalidToken
 	}
 
@@ -184,18 +190,15 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 	}
 	s.rooms[roomID] = r
 
-	room := &pb.Room{
+	r.roomProto = &pb.Room{
 		RoomId:          int32(roomID),
 		RequirePassword: request.Password != "",
 		MaxUser:         request.MaxUser,
 		ConnectedUser:   0,
-		Server:          s.server,
+		Server:          s.serverProto,
+		ApplicationName: request.ApplicationName,
+		Version:         request.Version,
 	}
 
-	if err := s.store.RegisterRoom(room); err != nil {
-		_ = r.Close()
-		return nil, err
-	}
-
-	return &pb.CreateRoomResponse{Room: room}, nil
+	return &pb.CreateRoomResponse{Room: r.roomProto}, nil
 }

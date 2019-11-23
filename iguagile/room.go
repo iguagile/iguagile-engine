@@ -22,7 +22,7 @@ type Room struct {
 	host             *Client
 	config           *RoomConfig
 	creatorConnected bool
-	room             *pb.Room
+	roomProto        *pb.Room
 	store            Store
 }
 
@@ -51,7 +51,7 @@ func NewRoom(store Store, config *RoomConfig) (*Room, error) {
 		log:              log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 		config:           config,
 		store:            store,
-		room:             &pb.Room{},
+		roomProto:        &pb.Room{},
 	}, nil
 }
 
@@ -63,8 +63,8 @@ func (r *Room) Serve(conn io.ReadWriteCloser) {
 		return
 	}
 
-	r.room.ConnectedUser = int32(r.clientManager.count + 1)
-	if err := r.store.UpdateRoom(r.room); err != nil {
+	r.roomProto.ConnectedUser = int32(r.clientManager.count + 1)
+	if err := r.store.UpdateRoom(r.roomProto); err != nil {
 		r.log.Println(err)
 	}
 	r.Register(client)
