@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 
 	"github.com/google/uuid"
 	pb "github.com/iguagile/iguagile-room-proto/room"
@@ -18,7 +19,7 @@ import (
 // RoomServer is server manages rooms.
 type RoomServer struct {
 	serverID    int
-	rooms       map[int]*Room
+	rooms       *sync.Map
 	store       Store
 	idGenerator IDGenerator
 	logger      *log.Logger
@@ -53,7 +54,7 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 
 	return &RoomServer{
 		serverID:    serverID,
-		rooms:       make(map[int]*Room),
+		rooms:       &sync.Map{},
 		store:       store,
 		logger:      &log.Logger{},
 		serverProto: server,
@@ -103,9 +104,14 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	}
 
 	roomID := int(binary.LittleEndian.Uint32(idByte))
-	room, ok := s.rooms[roomID]
+	r, ok := s.rooms.Load(roomID)
 	if !ok {
 		return fmt.Errorf("the room does not exist %v", roomID)
+	}
+
+	room, ok := r.(*Room)
+	if !ok {
+		return fmt.Errorf("invalid type %T", r)
 	}
 
 	if room.clientManager.count >= room.config.MaxUser {
@@ -188,7 +194,7 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 	if err != nil {
 		return nil, err
 	}
-	s.rooms[roomID] = r
+	s.rooms.Store(roomID, r)
 
 	r.roomProto = &pb.Room{
 		RoomId:          int32(roomID),
