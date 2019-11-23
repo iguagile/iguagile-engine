@@ -13,7 +13,6 @@ type Store interface {
 	RegisterServer(*pb.Server) error
 	UnregisterServer(*pb.Server) error
 	RegisterRoom(*pb.Room) error
-	UpdateRoom(*pb.Room) error
 	UnregisterRoom(*pb.Room) error
 }
 
@@ -27,7 +26,6 @@ const (
 	unregisterServerMessage
 	registerRoomMessage
 	unregisterRoomMessage
-	updateRoomMessage
 )
 
 // GenerateServerID is a method to number unique ServerID.
@@ -79,23 +77,6 @@ func (r *Redis) RegisterRoom(room *pb.Room) error {
 	}
 
 	message := append([]byte{registerRoomMessage}, serverProto...)
-
-	_, err = r.conn.Do("PUBLISH", "channel_rooms", message)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// UpdateRoom updates room information.
-func (r *Redis) UpdateRoom(room *pb.Room) error {
-	serverProto, err := proto.Marshal(room)
-	if err != nil {
-		return err
-	}
-
-	message := append([]byte{updateRoomMessage}, serverProto...)
 
 	_, err = r.conn.Do("PUBLISH", "channel_rooms", message)
 	if err != nil {

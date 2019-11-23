@@ -64,7 +64,7 @@ func (r *Room) Serve(conn io.ReadWriteCloser) {
 	}
 
 	r.roomProto.ConnectedUser = int32(r.clientManager.count + 1)
-	if err := r.store.UpdateRoom(r.roomProto); err != nil {
+	if err := r.store.RegisterRoom(r.roomProto); err != nil {
 		r.log.Println(err)
 	}
 	r.Register(client)
