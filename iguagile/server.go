@@ -156,12 +156,12 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	return nil
 }
 
-var invalidTokenErr = fmt.Errorf("invalid room server api token")
+var errInvalidToken = fmt.Errorf("invalid room server api token")
 
 // CreateRoom creates new room.
 func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomRequest) (*pb.CreateRoomResponse, error) {
 	if !bytes.Equal(request.ServerToken, s.server.Token) {
-		return nil, invalidTokenErr
+		return nil, errInvalidToken
 	}
 
 	roomID, err := s.idGenerator.Generate()
