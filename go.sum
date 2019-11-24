@@ -31,6 +31,8 @@ github.com/iguagile/iguagile-room-proto v0.0.0-20191117151349-09721276e78a h1:Es
 github.com/iguagile/iguagile-room-proto v0.0.0-20191117151349-09721276e78a/go.mod h1:NFqcB2wqHPiCtzuMi0jdLDt8qwEawquPQjYznNIr5QE=
 github.com/iguagile/iguagile-room-proto v0.0.0-20191122162431-d9fd8b1b83ba h1:DVJqluoMVqTBKKl0dAYf1CF3XnMQ5My1hxAx0loq2G4=
 github.com/iguagile/iguagile-room-proto v0.0.0-20191122162431-d9fd8b1b83ba/go.mod h1:uljINOsHyTlT6UIfBdK8DgFOgM70NOwo3V/qkRdgdEY=
+github.com/iguagile/iguagile-room-proto v0.0.0-20191124084357-7fafd7f2fd90 h1:LcfM7I2TkCXidsCuB9TlQKwb5k8FEfl1mCi/hQOCc2Q=
+github.com/iguagile/iguagile-room-proto v0.0.0-20191124084357-7fafd7f2fd90/go.mod h1:uljINOsHyTlT6UIfBdK8DgFOgM70NOwo3V/qkRdgdEY=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/lucas-clemente/quic-go v0.13.1 h1:CxtJTXQIh2aboCPk0M6vf530XOov6DZjVBiSE3nSj8s=
 github.com/lucas-clemente/quic-go v0.13.1/go.mod h1:Vn3/Fb0/77b02SGhQk36KzOUmXgVpFfizUfW5WMaqyU=
