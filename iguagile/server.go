@@ -22,7 +22,7 @@ type RoomServer struct {
 	serverID             int
 	rooms                *sync.Map
 	store                Store
-	idGenerator          IDGenerator
+	idGenerator          *IDGenerator
 	logger               *log.Logger
 	serverProto          *pb.Server
 	RoomUpdateDuration   time.Duration
@@ -55,6 +55,11 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 		Token:    token[:],
 	}
 
+	idGenerator, err := NewIDGenerator()
+	if err != nil {
+		return nil, err
+	}
+
 	return &RoomServer{
 		serverID:             serverID,
 		rooms:                &sync.Map{},
@@ -63,11 +68,13 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 		serverProto:          server,
 		RoomUpdateDuration:   time.Minute * 3,
 		ServerUpdateDuration: time.Minute * 5,
+		idGenerator:          idGenerator,
 	}, nil
 }
 
 // Run starts api and room server.
 func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
+	s.serverProto.ApiPort = int32(apiPort)
 	server := grpc.NewServer()
 	apiListener, err := net.Listen("tcp", fmt.Sprintf(":%v", apiPort))
 	if err != nil {
@@ -212,6 +219,8 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 	if err != nil {
 		return nil, err
 	}
+
+	roomID |= s.serverID
 
 	config := &RoomConfig{
 		RoomID:          roomID,
