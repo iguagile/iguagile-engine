@@ -133,16 +133,17 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 // Serve handles requests from the peer.
 func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	client := &Client{conn: conn}
-	idByte, err := client.read()
+	buf := make([]byte, maxMessageSize)
+	n, err := client.read(buf)
 	if err != nil {
 		return err
 	}
 
-	if len(idByte) != 4 {
-		return fmt.Errorf("invalid id length %v", idByte)
+	if n != 4 {
+		return fmt.Errorf("invalid id length %v", buf[:n])
 	}
 
-	roomID := int(binary.LittleEndian.Uint32(idByte))
+	roomID := int(binary.LittleEndian.Uint32(buf[:4]))
 	r, ok := s.rooms.Load(roomID)
 	if !ok {
 		return fmt.Errorf("the room does not exist %v", roomID)
@@ -157,41 +158,44 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 		return fmt.Errorf("connected clients exceed room capacity %v %v", room.config.MaxUser, room.clientManager.count)
 	}
 
-	applicationName, err := client.read()
+	n, err = client.read(buf)
 	if err != nil {
 		return err
 	}
 
-	if string(applicationName) != room.config.ApplicationName {
+	applicationName := string(buf[n])
+	if applicationName != room.config.ApplicationName {
 		return fmt.Errorf("invalid application name %v %v", applicationName, room.config.ApplicationName)
 	}
 
-	version, err := client.read()
+	n, err = client.read(buf)
 	if err != nil {
 		return err
 	}
 
-	if string(version) != room.config.Version {
+	version := string(buf[:n])
+	if version != room.config.Version {
 		return fmt.Errorf("invalid version %v %v", version, room.config.Version)
 	}
 
-	password, err := client.read()
+	n, err = client.read(buf)
 	if err != nil {
 		return err
 	}
 
-	if room.config.Password != "" && string(password) != room.config.Password {
+	password := string(buf[:n])
+	if room.config.Password != "" && password != room.config.Password {
 		return fmt.Errorf("invalid password %v %v", password, room.config.Password)
 	}
 
 	if !room.creatorConnected {
-		token, err := client.read()
+		n, err := client.read(buf)
 		if err != nil {
 			return err
 		}
 
-		if !bytes.Equal(token, room.config.Token) {
-			return fmt.Errorf("invalid token %v %v", token, room.config.Token)
+		if !bytes.Equal(buf[:n], room.config.Token) {
+			return fmt.Errorf("invalid token %v %v", buf[:n], room.config.Token)
 		}
 
 		room.roomProto.ConnectedUser = 1
