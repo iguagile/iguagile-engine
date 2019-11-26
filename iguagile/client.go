@@ -38,40 +38,37 @@ func NewClient(room *Room, conn io.ReadWriteCloser) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) read() ([]byte, error) {
-	buf := make([]byte, maxMessageSize)
-	sizeBuf := make([]byte, 2)
-	_, err := c.conn.Read(sizeBuf)
+func (c *Client) read(buf []byte) (int, error) {
+	_, err := c.conn.Read(buf[:2])
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	size := int(binary.LittleEndian.Uint16(sizeBuf))
+	size := int(binary.LittleEndian.Uint16(buf))
 	receivedSizeSum := 0
-	message := make([]byte, 0)
 	for receivedSizeSum < size {
-		receivedSize, err := c.conn.Read(buf[:size-receivedSizeSum])
+		receivedSize, err := c.conn.Read(buf[receivedSizeSum : size-receivedSizeSum])
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 
-		message = append(message, buf[:receivedSize]...)
 		receivedSizeSum += receivedSize
 	}
 
-	return message, nil
+	return size, nil
 }
 
 func (c *Client) readStart() {
+	buf := make([]byte, maxMessageSize)
 	for {
-		message, err := c.read()
+		n, err := c.read(buf)
 		if err != nil {
 			c.room.log.Println(err)
 			c.room.CloseConnection(c)
 			break
 		}
 
-		if err = c.room.Receive(c, message); err != nil {
+		if err = c.room.Receive(c, buf[:n]); err != nil {
 			c.room.log.Println(err)
 			c.room.CloseConnection(c)
 			break
