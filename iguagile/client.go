@@ -47,7 +47,7 @@ func (c *Client) read(buf []byte) (int, error) {
 	size := int(binary.LittleEndian.Uint16(buf))
 	receivedSizeSum := 0
 	for receivedSizeSum < size {
-		receivedSize, err := c.conn.Read(buf[receivedSizeSum : size])
+		receivedSize, err := c.conn.Read(buf[receivedSizeSum:size])
 		if err != nil {
 			return 0, err
 		}
