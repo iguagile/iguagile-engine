@@ -10,7 +10,7 @@ import (
 
 const quicBenchHost = "127.0.0.1:4101"
 
-func kBenchmarkConnectionQUIC(b *testing.B) {
+func BenchmarkConnectionQUIC(b *testing.B) {
 	tlsConfig, err := generateTLSConfig()
 	if err != nil {
 		b.Fatal(err)

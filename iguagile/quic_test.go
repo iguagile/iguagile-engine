@@ -75,7 +75,7 @@ func generateTLSConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func jTestConnectionQUIC(t *testing.T) {
+func TestConnectionQUIC(t *testing.T) {
 	tlsConfig, err := generateTLSConfig()
 	if err != nil {
 		t.Fatal(err)
