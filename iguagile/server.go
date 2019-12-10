@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -64,10 +65,10 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 		serverID:             serverID,
 		rooms:                &sync.Map{},
 		store:                store,
-		logger:               &log.Logger{},
+		logger:               log.New(os.Stdout, "iguagile-server ", log.Lshortfile),
 		serverProto:          server,
 		RoomUpdateDuration:   time.Minute * 3,
-		ServerUpdateDuration: time.Minute * 5,
+		ServerUpdateDuration: time.Minute * 3,
 		idGenerator:          idGenerator,
 	}, nil
 }
@@ -163,7 +164,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 		return err
 	}
 
-	applicationName := string(buf[n])
+	applicationName := string(buf[:n])
 	if applicationName != room.config.ApplicationName {
 		return fmt.Errorf("invalid application name %v %v", applicationName, room.config.ApplicationName)
 	}
