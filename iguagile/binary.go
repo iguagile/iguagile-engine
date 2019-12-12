@@ -1,4 +1,4 @@
-package data
+package iguagile
 
 import "errors"
 
