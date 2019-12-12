@@ -7,7 +7,6 @@ import (
 	"math"
 	"os"
 
-	"github.com/iguagile/iguagile-engine/data"
 	pb "github.com/iguagile/iguagile-room-proto/room"
 )
 
@@ -174,7 +173,7 @@ func (r *Room) Unregister(client *Client) {
 
 // Receive is receive inbound messages from the clients.
 func (r *Room) Receive(sender *Client, receivedData []byte) error {
-	inbound, err := data.NewInBoundData(receivedData)
+	inbound, err := NewInBoundData(receivedData)
 	if err != nil {
 		return err
 	}
@@ -210,7 +209,7 @@ func (r *Room) Receive(sender *Client, receivedData []byte) error {
 }
 
 // ReceiveRPC receives rpc to server.
-func (r *Room) ReceiveRPC(sender *Client, binaryData *data.BinaryData) {
+func (r *Room) ReceiveRPC(sender *Client, binaryData *BinaryData) {
 	switch binaryData.MessageType {
 	case instantiate:
 		r.InstantiateObject(sender, binaryData.Payload)
