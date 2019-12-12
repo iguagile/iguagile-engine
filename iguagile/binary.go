@@ -34,8 +34,8 @@ func NewInBoundData(b []byte) (*BinaryData, error) {
 
 	return &BinaryData{
 		Traffic:     Inbound,
-		Target:      b[0:1][0],
-		MessageType: b[1:2][0],
+		Target:      b[0],
+		MessageType: b[1],
 		Payload:     b[2:],
 	}, nil
 }
@@ -49,7 +49,7 @@ func NewOutBoundData(b []byte) (*BinaryData, error) {
 	return &BinaryData{
 		Traffic:     Outbound,
 		ID:          b[:2],
-		MessageType: b[2:3][0],
+		MessageType: b[2],
 		Payload:     b[3:],
 	}, nil
 }
