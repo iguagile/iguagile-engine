@@ -41,7 +41,7 @@ func run() error {
 		return err
 	}
 
-	roomHost := fmt.Sprintf("%v, %v", roomIP, roomPort)
+	roomHost := fmt.Sprintf("%v:%v", roomIP, roomPort)
 
 	server, err := iguagile.NewRoomServer(store, roomHost)
 	if err != nil {
