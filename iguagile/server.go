@@ -97,24 +97,26 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 	go func(ctx context.Context) {
 		serverTicker := time.NewTicker(s.ServerUpdateDuration)
 		roomTicker := time.NewTicker(s.RoomUpdateDuration)
-		select {
-		case <-serverTicker.C:
-			if err := s.store.RegisterServer(s.serverProto); err != nil {
-				s.logger.Println(err)
-			}
-		case <-roomTicker.C:
-			s.rooms.Range(func(_, value interface{}) bool {
-				room, ok := value.(*Room)
-				if !ok {
-					return true
-				}
-				if err := s.store.RegisterRoom(room.roomProto); err != nil {
+		for {
+			select {
+			case <-serverTicker.C:
+				if err := s.store.RegisterServer(s.serverProto); err != nil {
 					s.logger.Println(err)
 				}
-				return true
-			})
-		case <-ctx.Done():
-			return
+			case <-roomTicker.C:
+				s.rooms.Range(func(_, value interface{}) bool {
+					room, ok := value.(*Room)
+					if !ok {
+						return true
+					}
+					if err := s.store.RegisterRoom(room.roomProto); err != nil {
+						s.logger.Println(err)
+					}
+					return true
+				})
+			case <-ctx.Done():
+				return
+			}
 		}
 	}(ctx)
 
