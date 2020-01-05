@@ -109,6 +109,9 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 					if !ok {
 						return true
 					}
+					if !room.creatorConnected {
+						return true
+					}
 					if err := s.store.RegisterRoom(room.roomProto); err != nil {
 						s.logger.Println(err)
 					}
@@ -238,7 +241,7 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 		Token:           request.RoomToken,
 	}
 
-	r, err := NewRoom(s.store, config)
+	r, err := NewRoom(s, config)
 	if err != nil {
 		return nil, err
 	}

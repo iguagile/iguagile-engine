@@ -23,6 +23,7 @@ type Room struct {
 	creatorConnected bool
 	roomProto        *pb.Room
 	store            Store
+	server           *RoomServer
 }
 
 // RoomConfig is room config.
@@ -36,7 +37,7 @@ type RoomConfig struct {
 }
 
 // NewRoom is Room constructed.
-func NewRoom(store Store, config *RoomConfig) (*Room, error) {
+func NewRoom(server *RoomServer, config *RoomConfig) (*Room, error) {
 	gen, err := NewIDGenerator()
 	if err != nil {
 		return nil, err
@@ -49,8 +50,9 @@ func NewRoom(store Store, config *RoomConfig) (*Room, error) {
 		generator:        gen,
 		log:              log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
 		config:           config,
-		store:            store,
+		store:            server.store,
 		roomProto:        &pb.Room{},
+		server:           server,
 	}, nil
 }
 
@@ -145,6 +147,10 @@ func (r *Room) Unregister(client *Client) {
 	defer r.objectManager.Unlock()
 	if r.clientManager.Count() == 0 {
 		r.objectManager.Clear()
+		_ = r.Close()
+		if err := r.store.UnregisterRoom(r.roomProto); err != nil {
+			r.log.Println(err)
+		}
 		return
 	}
 
@@ -426,6 +432,8 @@ func (r *Room) Close() error {
 			r.log.Println(err)
 		}
 	}
+
+	r.server.rooms.Delete(r.config.RoomID)
 
 	return nil
 }
