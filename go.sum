@@ -32,8 +32,12 @@ github.com/marten-seemann/qtls v0.4.1 h1:YlT8QP3WCCvvok7MGEZkMldXbyqgr8oFg5/n8Gt
 github.com/marten-seemann/qtls v0.4.1/go.mod h1:pxVXcHHw1pNIt8Qo0pwSYQEoZ8yYOOPXTCZLQQunvRc=
 github.com/minami14/go-bitarray v1.0.0 h1:j4+OEFKTFTIrjTSo6bXOImcYf+w2U3R1b4CqGU2xUMM=
 github.com/minami14/go-bitarray v1.0.0/go.mod h1:acA3F6YzUx/WBUPpoR1HS5H1HAlINmfn1nE9aSilp2g=
+github.com/minami14/go-bitarray v1.1.2 h1:E+Nd3dGG+aLhpVlSaJCC7Fh+3xGsaT0zbuvrrJC+dyg=
+github.com/minami14/go-bitarray v1.1.2/go.mod h1:i6OBYFrV3uyrMpN1jwB2fAwLypdT9FIPAOiognNQ8wc=
 github.com/minami14/idgo v1.1.0 h1:J6Ax2MZXfGijIWF/gh8ZxlbqedGYGKu/yR2kKl3K2Fk=
 github.com/minami14/idgo v1.1.0/go.mod h1:bKmaKSNP9s3aDPpSd10hycxTDWSG9G+ZRq7TA39VgT4=
+github.com/minami14/idgo v1.1.1 h1:hxokBHDQUqTMQhv2GOPFnLQ2QHHi5rGOKO7/woni17s=
+github.com/minami14/idgo v1.1.1/go.mod h1:oxMlMROuiDEbZbOHzGw5D0mpsv8oGuLsBjUrwiRn9po=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0 h1:WSHQ+IS43OoUrWtD1/bbclrwK8TTH5hzp+umCiuxHgs=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
