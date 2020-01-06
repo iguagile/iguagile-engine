@@ -33,7 +33,12 @@ func listen(tb testing.TB, listener net.Listener, clients int) error {
 		return err
 	}
 
-	room, err := NewRoom(store, config)
+	server, err := NewRoomServer(store, tcpTestHost)
+	if err != nil {
+		return err
+	}
+
+	room, err := NewRoom(server, config)
 	if err != nil {
 		return err
 	}
