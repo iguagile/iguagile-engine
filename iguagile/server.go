@@ -22,6 +22,7 @@ import (
 type RoomServer struct {
 	serverID             int
 	rooms                *sync.Map
+	factory              RoomServiceFactory
 	store                Store
 	idGenerator          *IDGenerator
 	logger               *log.Logger
@@ -31,7 +32,7 @@ type RoomServer struct {
 }
 
 // NewRoomServer is a constructor of RoomServer.
-func NewRoomServer(store Store, address string) (*RoomServer, error) {
+func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*RoomServer, error) {
 	host, portStr, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
@@ -64,6 +65,7 @@ func NewRoomServer(store Store, address string) (*RoomServer, error) {
 	return &RoomServer{
 		serverID:             serverID,
 		rooms:                &sync.Map{},
+		factory:              factory,
 		store:                store,
 		logger:               log.New(os.Stdout, "iguagile-server ", log.Lshortfile),
 		serverProto:          server,
@@ -136,7 +138,7 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 	}
 }
 
-// Serve handles requests from the peer.
+// serve handles requests from the peer.
 func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	client := &Client{conn: conn}
 	buf := make([]byte, maxMessageSize)
@@ -213,8 +215,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 		room.creatorConnected = true
 	}
 
-	room.Serve(conn)
-	return nil
+	return room.serve(conn)
 }
 
 var errInvalidToken = fmt.Errorf("invalid room server api token")
@@ -241,10 +242,17 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 		Token:           request.RoomToken,
 	}
 
-	r, err := NewRoom(s, config)
+	r, err := newRoom(s, config)
 	if err != nil {
 		return nil, err
 	}
+
+	service, err := s.factory.Create(r)
+	if err != nil {
+		return nil, err
+	}
+	r.service = service
+
 	s.rooms.Store(roomID, r)
 
 	r.roomProto = &pb.Room{
