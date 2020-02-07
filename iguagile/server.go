@@ -240,6 +240,7 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 		Password:        request.Password,
 		MaxUser:         int(request.MaxUser),
 		Token:           request.RoomToken,
+		Info:            request.Information,
 	}
 
 	r, err := newRoom(s, config)
@@ -263,6 +264,7 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 		Server:          s.serverProto,
 		ApplicationName: request.ApplicationName,
 		Version:         request.Version,
+		Information:     request.Information,
 	}
 
 	return &pb.CreateRoomResponse{Room: r.roomProto}, nil

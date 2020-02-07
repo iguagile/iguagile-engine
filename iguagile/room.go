@@ -34,6 +34,7 @@ type RoomConfig struct {
 	Version         string
 	Password        string
 	MaxUser         int
+	Info            map[string]string
 	Token           []byte
 }
 
