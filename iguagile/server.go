@@ -138,7 +138,7 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 	}
 }
 
-// serve handles requests from the peer.
+// Serve handles requests from the peer.
 func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	client := &Client{conn: conn}
 	buf := make([]byte, maxMessageSize)

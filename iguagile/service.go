@@ -2,7 +2,7 @@ package iguagile
 
 // RoomService implements the processing performed by the room
 type RoomService interface {
-	// receive processes data sent from the client to the server.
+	// Receive processes data sent from the client to the server.
 	Receive(senderID int, data []byte) error
 
 	// OnRegisterClient is called when the client connects to the room.
@@ -27,7 +27,7 @@ type RoomServiceFactory interface {
 // EmptyRoomService is empty service used for relay server.
 type EmptyRoomService struct{}
 
-// receive for implement RoomService.
+// Receive for implement RoomService.
 func (s EmptyRoomService) Receive(_ int, _ []byte) error {
 	return nil
 }
