@@ -62,39 +62,3 @@ type RelayServiceFactory struct{}
 func (f RelayServiceFactory) Create(room *Room) (RoomService, error) {
 	return &RelayService{room: room}, nil
 }
-
-// EmptyRoomService is empty service used for relay server.
-type EmptyRoomService struct{}
-
-// Receive for implement RoomService.
-func (s EmptyRoomService) Receive(_ int, _ []byte) error {
-	return nil
-}
-
-// OnRegisterClient for implement RoomService.
-func (s EmptyRoomService) OnRegisterClient(_ int) error {
-	return nil
-}
-
-// OnUnregisterClient for implement RoomService.
-func (s EmptyRoomService) OnUnregisterClient(_ int) error {
-	return nil
-}
-
-// OnChangeHost for implement RoomService.
-func (s EmptyRoomService) OnChangeHost(_ int) error {
-	return nil
-}
-
-// Destroy for implement RoomService.
-func (s EmptyRoomService) Destroy() error {
-	return nil
-}
-
-// EmptyRoomServiceFactory creates EmptyRoomServices.
-type EmptyRoomServiceFactory struct{}
-
-// Create creates a EmptyRoomService.
-func (f EmptyRoomServiceFactory) Create(_ *Room) (RoomService, error) {
-	return EmptyRoomService{}, nil
-}
