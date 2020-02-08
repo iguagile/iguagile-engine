@@ -68,7 +68,7 @@ func (c *Client) readStart() {
 			break
 		}
 
-		if err = c.room.Receive(c, buf[:n]); err != nil {
+		if err = c.room.service.Receive(c.id, buf[:n]); err != nil {
 			c.room.log.Println(err)
 			c.room.CloseConnection(c)
 			break
