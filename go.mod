@@ -7,7 +7,7 @@ require (
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/iguagile/iguagile-room-proto v0.0.0-20200206152432-0db3646938b5
-	github.com/lucas-clemente/quic-go v0.15.5
+	github.com/lucas-clemente/quic-go v0.15.6
 	github.com/minami14/idgo v1.1.1
 	google.golang.org/grpc v1.27.1
 )
