@@ -8,13 +8,14 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/pem"
-	"github.com/lucas-clemente/quic-go"
 	"io"
 	"log"
 	"math/big"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/lucas-clemente/quic-go"
 )
 
 const quicHost = "127.0.0.1:4100"
