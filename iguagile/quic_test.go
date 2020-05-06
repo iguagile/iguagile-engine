@@ -42,7 +42,7 @@ func ListenQUIC(t *testing.T) {
 	}
 
 	r, err := newRoom(rs, &rc)
-	rss, err := rsf.Create(r)
+	//rss, err := rsf.Create(r)
 	if err != nil {
 		t.Fatal(err)
 	}
