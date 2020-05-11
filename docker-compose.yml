@@ -6,8 +6,19 @@ services:
     ports:
       - 6379:6379
 
-  igagile:
-    image: iguagile/iguagile-engine:beta
+
+  iguagile-api:
+    image: iguagile/iguagile-api:latest
     ports:
-      - 4000:4000
-      - 5000:5000
+      - 8080:80
+    environment:
+      REDIS_HOST: redis:6379
+
+# this is self
+#  igagile:
+#    image: iguagile/iguagile-engine:beta
+#    ports:
+#      - 4000:4000
+#      - 5000:5000
+
+
