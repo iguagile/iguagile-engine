@@ -8,7 +8,7 @@ RUN \
   cd github.com/iguagile && \
   git clone https://github.com/iguagile/iguagile-engine.git && \
   cd ./iguagile-engine && \
-  GOOS=linux CGO_ENABLED=0 go build -a -o out cmd/tcp-server/main.go && \
+  GOOS=linux CGO_ENABLED=0 go build -a -o out cmd/relay/main.go && \
   cp out /app
 
 FROM alpine
