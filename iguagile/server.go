@@ -43,7 +43,7 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 		return nil, err
 	}
 
-	if port > 65535 {
+	if port > 65535 || port < 0 {
 		return nil, fmt.Errorf("port is out of range %v", port)
 	}
 
@@ -81,7 +81,7 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 
 // Run starts api and room server.
 func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
-	if apiPort > 65535 {
+	if apiPort > 65535 || apiPort < 0 {
 		return fmt.Errorf("port is out of range %v", apiPort)
 	}
 
