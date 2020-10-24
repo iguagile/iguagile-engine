@@ -42,7 +42,7 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 	if err != nil {
 		return nil, err
 	}
-
+var ErrPortIsOutOfRange = fmt.Errorf("invalid room server api token")
 	if port > 65535 || port < 0 {
 		return nil, fmt.Errorf("port is out of range %v", port)
 	}
