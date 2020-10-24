@@ -31,6 +31,9 @@ type RoomServer struct {
 	ServerUpdateDuration time.Duration
 }
 
+// ErrPortIsOutOfRange is invalid ports request.
+var ErrPortIsOutOfRange = fmt.Errorf("port is out of range")
+
 // NewRoomServer is a constructor of RoomServer.
 func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*RoomServer, error) {
 	host, portStr, err := net.SplitHostPort(address)
@@ -41,6 +44,9 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return nil, err
+	}
+	if port > 65535 || port < 0 {
+		return nil, ErrPortIsOutOfRange
 	}
 
 	serverID, err := store.GenerateServerID()
@@ -77,6 +83,10 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 
 // Run starts api and room server.
 func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
+	if apiPort > 65535 || apiPort < 0 {
+		return ErrPortIsOutOfRange
+	}
+
 	s.serverProto.ApiPort = int32(apiPort)
 	server := grpc.NewServer()
 	apiListener, err := net.Listen("tcp", fmt.Sprintf(":%v", apiPort))
