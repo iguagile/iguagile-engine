@@ -31,6 +31,7 @@ type RoomServer struct {
 	ServerUpdateDuration time.Duration
 }
 
+// ErrPortIsOutOfRange is invalid ports request.
 var ErrPortIsOutOfRange = fmt.Errorf("port is out of range")
 
 // NewRoomServer is a constructor of RoomServer.
