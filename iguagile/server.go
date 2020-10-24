@@ -43,6 +43,10 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 		return nil, err
 	}
 
+	if port > 65535 {
+		return nil, fmt.Errorf("port is out of range %v", port)
+	}
+
 	serverID, err := store.GenerateServerID()
 	if err != nil {
 		return nil, err
@@ -77,6 +81,10 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 
 // Run starts api and room server.
 func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
+	if apiPort > 65535 {
+		return fmt.Errorf("port is out of range %v", apiPort)
+	}
+
 	s.serverProto.ApiPort = int32(apiPort)
 	server := grpc.NewServer()
 	apiListener, err := net.Listen("tcp", fmt.Sprintf(":%v", apiPort))
