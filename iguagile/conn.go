@@ -9,8 +9,10 @@ import (
 	"github.com/lucas-clemente/quic-go"
 )
 
+// Stream provide a ordered byte-stream abstraction to an application.
 type Stream io.ReadWriteCloser
 
+// Conn is a network connection.
 type Conn interface {
 	AcceptStream() (Stream, error)
 	OpenStream() (Stream, error)
@@ -19,6 +21,7 @@ type Conn interface {
 	Close() error
 }
 
+// Listener is a network listener.
 type Listener interface {
 	Accept() (Conn, error)
 	Addr() net.Addr
