@@ -107,6 +107,7 @@ type quicListener struct {
 	listener quic.Listener
 }
 
+// ListenQuic creates a QUIC server listening on a given address.
 func ListenQuic(address string, tlsConfig *tls.Config) (Listener, error) {
 	l, err := quic.ListenAddr(address, tlsConfig, nil)
 	if err != nil {

@@ -1,7 +1,6 @@
 package iguagile
 
 import (
-	"io"
 	"log"
 	"math"
 	"os"
@@ -13,7 +12,6 @@ import (
 // clients.
 type Room struct {
 	clientManager    *ClientManager
-	rpcBufferManager *RPCBufferManager
 	generator        *IDGenerator
 	log              *log.Logger
 	host             *Client
@@ -21,7 +19,7 @@ type Room struct {
 	creatorConnected bool
 	roomProto        *pb.Room
 	store            Store
-	server           *RoomServer
+	engine           *Engine
 	service          RoomService
 }
 
@@ -36,25 +34,24 @@ type RoomConfig struct {
 	Token           []byte
 }
 
-func newRoom(server *RoomServer, config *RoomConfig) (*Room, error) {
+func newRoom(engine *Engine, config *RoomConfig) (*Room, error) {
 	gen, err := NewIDGenerator()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Room{
-		clientManager:    NewClientManager(),
-		rpcBufferManager: NewRPCBufferManager(),
-		generator:        gen,
-		log:              log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
-		config:           config,
-		store:            server.store,
-		roomProto:        &pb.Room{},
-		server:           server,
+		clientManager: NewClientManager(),
+		generator:     gen,
+		log:           log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
+		config:        config,
+		store:         engine.store,
+		roomProto:     &pb.Room{},
+		engine:        engine,
 	}, nil
 }
 
-func (r *Room) serve(conn io.ReadWriteCloser) error {
+func (r *Room) serve(conn Conn) error {
 	client, err := NewClient(r, conn)
 	if err != nil {
 		return err
@@ -78,7 +75,6 @@ func (r *Room) register(client *Client) error {
 		return err
 	}
 
-	go client.writeStart()
 	if r.clientManager.Count() == 1 {
 		r.host = client
 	}
@@ -107,37 +103,65 @@ func (r *Room) unregister(client *Client) error {
 }
 
 // SendToHost sends outbound message to the host.
-func (r *Room) SendToHost(senderID int, message []byte) {
-	r.host.Send(message)
+func (r *Room) SendToHost(streamName string, message []byte) {
+	stream, ok := r.host.streams[streamName]
+	if !ok {
+		return
+	}
+
+	if _, err := stream.Write(message); err != nil {
+		r.log.Println(err)
+	}
 }
 
 // SendToClient sends outbound message to the client.
-func (r *Room) SendToClient(targetID, senderID int, message []byte) {
+func (r *Room) SendToClient(streamName string, targetID int, message []byte) {
 	client, err := r.clientManager.Get(targetID)
 	if err != nil {
 		r.log.Println(err)
 		return
 	}
 
-	client.Send(message)
+	stream, ok := client.streams[streamName]
+	if !ok {
+		return
+	}
+
+	if _, err := stream.Write(message); err != nil {
+		r.log.Println(err)
+	}
 }
 
 // SendToAllClients sends outbound message to all registered clients.
-func (r *Room) SendToAllClients(senderID int, message []byte) {
+func (r *Room) SendToAllClients(streamName string, message []byte) {
 	r.clientManager.Lock()
 	defer r.clientManager.Unlock()
 	for _, client := range r.clientManager.GetAllClients() {
-		client.Send(message)
+		stream, ok := client.streams[streamName]
+		if !ok {
+			continue
+		}
+
+		if _, err := stream.Write(message); err != nil {
+			r.log.Println(err)
+		}
 	}
 }
 
 // SendToOtherClients sends outbound message to other registered clients.
-func (r *Room) SendToOtherClients(senderID int, message []byte) {
+func (r *Room) SendToOtherClients(streamName string, senderID int, message []byte) {
 	r.clientManager.Lock()
 	defer r.clientManager.Unlock()
 	for id, client := range r.clientManager.GetAllClients() {
 		if id != senderID {
-			client.Send(message)
+			stream, ok := client.streams[streamName]
+			if !ok {
+				continue
+			}
+
+			if _, err := stream.Write(message); err != nil {
+				r.log.Println(err)
+			}
 		}
 	}
 }
@@ -162,6 +186,6 @@ func (r *Room) Close() error {
 		}
 	}
 
-	r.server.rooms.Delete(r.config.RoomID)
+	r.engine.rooms.Delete(r.config.RoomID)
 	return r.service.Destroy()
 }

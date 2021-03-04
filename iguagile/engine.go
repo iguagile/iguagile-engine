@@ -1,12 +1,10 @@
 package iguagile
 
-/*
 import (
 	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -19,8 +17,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-// RoomServer is engine manages rooms.
-type RoomServer struct {
+const (
+	userStreamPrefix = "U"
+)
+
+type Engine struct {
 	serverID             int
 	rooms                *sync.Map
 	factory              RoomServiceFactory
@@ -32,92 +33,84 @@ type RoomServer struct {
 	ServerUpdateDuration time.Duration
 }
 
-// ErrPortIsOutOfRange is invalid ports request.
-var ErrPortIsOutOfRange = fmt.Errorf("port is out of range")
-
-// NewRoomServer is a constructor of RoomServer.
-func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*RoomServer, error) {
-	host, portStr, err := net.SplitHostPort(address)
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return nil, err
-	}
-	if port > 65535 || port < 0 {
-		return nil, ErrPortIsOutOfRange
-	}
-
-	serverID, err := store.GenerateServerID()
-	if err != nil {
-		return nil, err
-	}
-
-	token := uuid.New()
-
-	engine := &pb.Server{
-		Host:     host,
-		Port:     int32(port),
-		ServerId: int32(serverID),
-		Token:    token[:],
-	}
-
-	idGenerator, err := NewIDGenerator()
-	if err != nil {
-		return nil, err
-	}
-
-	return &RoomServer{
-		serverID:             serverID,
+func New(factory RoomServiceFactory, store Store) *Engine {
+	return &Engine{
 		rooms:                &sync.Map{},
 		factory:              factory,
 		store:                store,
 		logger:               log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
-		serverProto:          engine,
 		RoomUpdateDuration:   time.Minute * 3,
 		ServerUpdateDuration: time.Minute * 3,
-		idGenerator:          idGenerator,
-	}, nil
+	}
 }
 
-// Run starts api and room engine.
-func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
-	if apiPort > 65535 || apiPort < 0 {
-		return ErrPortIsOutOfRange
-	}
-
-	s.serverProto.ApiPort = int32(apiPort)
-	engine := grpc.NewServer()
-	apiListener, err := net.Listen("tcp", fmt.Sprintf(":%v", apiPort))
+func (e *Engine) Start(ctx context.Context, listener Listener, address, apiAddress string) error {
+	host, portStr, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
 	}
 
-	pb.RegisterRoomServiceServer(engine, s)
-	go func() {
-		_ = engine.Serve(apiListener)
-	}()
-
-	if err := s.store.RegisterServer(s.serverProto); err != nil {
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	_, apiPortStr, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+
+	apiPort, err := strconv.Atoi(apiPortStr)
+	if err != nil {
+		return err
+	}
+
+	serverID, err := e.store.GenerateServerID()
+	if err != nil {
+		return err
+	}
+
+	grpcServer := grpc.NewServer()
+	apiListener, err := net.Listen("tcp", apiAddress)
+	if err != nil {
+		return err
+	}
+
+	pb.RegisterRoomServiceServer(grpcServer, e)
+	go func() {
+		_ = grpcServer.Serve(apiListener)
+	}()
+
+	token := uuid.New()
+
+	e.serverProto = &pb.Server{
+		Host:     host,
+		Port:     int32(port),
+		ServerId: int32(serverID),
+		ApiPort:  int32(apiPort),
+		Token:    token[:],
+	}
+
+	e.idGenerator, err = NewIDGenerator()
+	if err != nil {
+		return err
+	}
+
+	if err := e.store.RegisterServer(e.serverProto); err != nil {
+		return err
+	}
 
 	go func(ctx context.Context) {
-		serverTicker := time.NewTicker(s.ServerUpdateDuration)
-		roomTicker := time.NewTicker(s.RoomUpdateDuration)
+		serverTicker := time.NewTicker(e.ServerUpdateDuration)
+		roomTicker := time.NewTicker(e.RoomUpdateDuration)
 		for {
 			select {
 			case <-serverTicker.C:
-				if err := s.store.RegisterServer(s.serverProto); err != nil {
-					s.logger.Println(err)
+				if err := e.store.RegisterServer(e.serverProto); err != nil {
+					e.logger.Println(err)
 				}
 			case <-roomTicker.C:
-				s.rooms.Range(func(_, value interface{}) bool {
+				e.rooms.Range(func(_, value interface{}) bool {
 					room, ok := value.(*Room)
 					if !ok {
 						return true
@@ -125,8 +118,8 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 					if !room.creatorConnected {
 						return true
 					}
-					if err := s.store.RegisterRoom(room.roomProto); err != nil {
-						s.logger.Println(err)
+					if err := e.store.RegisterRoom(room.roomProto); err != nil {
+						e.logger.Println(err)
 					}
 					return true
 				})
@@ -137,23 +130,28 @@ func (s *RoomServer) Run(roomListener net.Listener, apiPort int) error {
 	}(ctx)
 
 	for {
-		conn, err := roomListener.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			s.logger.Println(err)
+			e.logger.Println(err)
 			continue
 		}
 
-		if err := s.Serve(conn); err != nil {
-			s.logger.Println(err)
-		}
+		go func() {
+			if err := e.serve(conn); err != nil {
+				e.logger.Println(err)
+			}
+		}()
 	}
 }
 
-// Serve handles requests from the peer.
-func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
-	client := &Client{conn: conn}
+func (e *Engine) serve(conn Conn) error {
+	stream, err := conn.AcceptStream()
+	if err != nil {
+		return err
+	}
+
 	buf := make([]byte, maxMessageSize)
-	n, err := client.read(buf)
+	n, err := stream.Read(buf)
 	if err != nil {
 		return err
 	}
@@ -163,7 +161,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	}
 
 	roomID := int(binary.LittleEndian.Uint32(buf[:4]))
-	r, ok := s.rooms.Load(roomID)
+	r, ok := e.rooms.Load(roomID)
 	if !ok {
 		return fmt.Errorf("the room does not exist %v", roomID)
 	}
@@ -177,7 +175,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 		return fmt.Errorf("connected clients exceed room capacity %v %v", room.config.MaxUser, room.clientManager.count)
 	}
 
-	n, err = client.read(buf)
+	n, err = stream.Read(buf)
 	if err != nil {
 		return err
 	}
@@ -187,7 +185,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 		return fmt.Errorf("invalid application name %v %v", applicationName, room.config.ApplicationName)
 	}
 
-	n, err = client.read(buf)
+	n, err = stream.Read(buf)
 	if err != nil {
 		return err
 	}
@@ -197,7 +195,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 		return fmt.Errorf("invalid version %v %v", version, room.config.Version)
 	}
 
-	n, err = client.read(buf)
+	n, err = stream.Read(buf)
 	if err != nil {
 		return err
 	}
@@ -208,7 +206,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 	}
 
 	if !room.creatorConnected {
-		n, err := client.read(buf)
+		n, err = stream.Read(buf)
 		if err != nil {
 			return err
 		}
@@ -219,7 +217,7 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 
 		room.roomProto.ConnectedUser = 1
 
-		if err := s.store.RegisterRoom(room.roomProto); err != nil {
+		if err := e.store.RegisterRoom(room.roomProto); err != nil {
 			return err
 		}
 
@@ -232,17 +230,17 @@ func (s *RoomServer) Serve(conn io.ReadWriteCloser) error {
 var errInvalidToken = fmt.Errorf("invalid room engine api token")
 
 // CreateRoom creates new room.
-func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomRequest) (*pb.CreateRoomResponse, error) {
-	if !bytes.Equal(request.ServerToken, s.serverProto.Token) {
+func (e *Engine) CreateRoom(ctx context.Context, request *pb.CreateRoomRequest) (*pb.CreateRoomResponse, error) {
+	if !bytes.Equal(request.ServerToken, e.serverProto.Token) {
 		return nil, errInvalidToken
 	}
 
-	roomID, err := s.idGenerator.Generate()
+	roomID, err := e.idGenerator.Generate()
 	if err != nil {
 		return nil, err
 	}
 
-	roomID |= s.serverID
+	roomID |= e.serverID
 
 	config := &RoomConfig{
 		RoomID:          roomID,
@@ -254,25 +252,25 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 		Info:            request.Information,
 	}
 
-	r, err := newRoom(s, config)
+	r, err := newRoom(e, config)
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := s.factory.Create(r)
+	service, err := e.factory.Create(r)
 	if err != nil {
 		return nil, err
 	}
 	r.service = service
 
-	s.rooms.Store(roomID, r)
+	e.rooms.Store(roomID, r)
 
 	r.roomProto = &pb.Room{
 		RoomId:          int32(roomID),
 		RequirePassword: request.Password != "",
 		MaxUser:         request.MaxUser,
 		ConnectedUser:   0,
-		Server:          s.serverProto,
+		Server:          e.serverProto,
 		ApplicationName: request.ApplicationName,
 		Version:         request.Version,
 		Information:     request.Information,
@@ -280,4 +278,3 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 
 	return &pb.CreateRoomResponse{Room: r.roomProto}, nil
 }
-*/

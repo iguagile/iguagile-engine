@@ -4,21 +4,20 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 )
 
 // Client is a middleman between the connection and the room.
 type Client struct {
-	id     int
-	idByte []byte
-	conn   io.ReadWriteCloser
-	room   *Room
-	send   chan []byte
+	id      int
+	idByte  []byte
+	conn    Conn
+	streams map[string]Stream
+	room    *Room
 }
 
 // NewClient is Client constructed.
-func NewClient(room *Room, conn io.ReadWriteCloser) (*Client, error) {
+func NewClient(room *Room, conn Conn) (*Client, error) {
 	id, err := room.generator.Generate()
 	if err != nil {
 		return nil, err
@@ -32,68 +31,46 @@ func NewClient(room *Room, conn io.ReadWriteCloser) (*Client, error) {
 		idByte: idByte,
 		conn:   conn,
 		room:   room,
-		send:   make(chan []byte),
 	}
 
 	return client, nil
 }
 
-func (c *Client) read(buf []byte) (int, error) {
-	_, err := c.conn.Read(buf[:2])
-	if err != nil {
-		return 0, err
-	}
-
-	size := int(binary.LittleEndian.Uint16(buf))
-	receivedSizeSum := 0
-	for receivedSizeSum < size {
-		receivedSize, err := c.conn.Read(buf[receivedSizeSum:size])
-		if err != nil {
-			return 0, err
-		}
-
-		receivedSizeSum += receivedSize
-	}
-
-	return size, nil
-}
-
 func (c *Client) readStart() {
-	buf := make([]byte, maxMessageSize)
 	for {
-		n, err := c.read(buf)
+		buf := make([]byte, maxMessageSize)
+		stream, err := c.conn.AcceptStream()
 		if err != nil {
 			c.room.log.Println(err)
 			c.room.CloseConnection(c)
 			break
 		}
 
-		if err = c.room.service.Receive(c.id, buf[:n]); err != nil {
-			c.room.log.Println(err)
-			c.room.CloseConnection(c)
-			break
-		}
-	}
-}
+		go func() {
+			n, err := stream.Read(buf)
+			if err != nil {
+				c.room.log.Println(err)
+			}
 
-func (c *Client) write(message []byte) error {
-	size := len(message)
-	sizeByte := make([]byte, 2, size+2)
-	binary.LittleEndian.PutUint16(sizeByte, uint16(size))
-	message = append(sizeByte, message...)
-	if _, err := c.conn.Write(message); err != nil {
-		return err
-	}
-	return nil
-}
+			streamName := string(buf[:n])
+			c.streams[streamName] = stream
+			receive, err := c.room.service.ReceiveFunc(streamName)
+			if err != nil {
+				c.room.log.Println(err)
+			}
 
-func (c *Client) writeStart() {
-	for {
-		if err := c.write(<-c.send); err != nil {
-			c.room.log.Println(err)
-			c.room.CloseConnection(c)
-			break
-		}
+			for {
+				n, err := stream.Read(buf)
+				if err != nil {
+					c.room.log.Println(err)
+					break
+				}
+
+				if err := receive(c.id, buf[:n]); err != nil {
+					c.room.log.Println(err)
+				}
+			}
+		}()
 	}
 }
 
@@ -105,11 +82,6 @@ func (c *Client) GetID() int {
 // GetIDByte is getter for idByte.
 func (c *Client) GetIDByte() []byte {
 	return c.idByte
-}
-
-// Send is enqueue outbound messages.
-func (c *Client) Send(message []byte) {
-	c.send <- message
 }
 
 // Close closes the connection.
