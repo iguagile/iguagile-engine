@@ -3,7 +3,6 @@ package iguagile
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"github.com/lucas-clemente/quic-go"
 )
 
@@ -69,11 +68,11 @@ func (q *quicConn) OpenStream() (*quicStream, error) {
 }
 
 func (q *quicConn) ReceiveMessage() ([]byte, error) {
-	return nil, errors.New("not implemented")
+	return q.sess.ReceiveMessage()
 }
 
-func (q *quicConn) SendMessage(buf []byte) error {
-	return errors.New("not implemented")
+func (q *quicConn) SendMessage(message []byte) error {
+	return q.sess.SendMessage(message)
 }
 
 func (q *quicConn) Close() error {
