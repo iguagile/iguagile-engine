@@ -79,7 +79,3 @@ func (q *quicConn) SendMessage(buf []byte) error {
 func (q *quicConn) Close() error {
 	return nil
 }
-
-type quicListener struct {
-	listener quic.Listener
-}
