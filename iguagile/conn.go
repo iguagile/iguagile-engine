@@ -2,33 +2,10 @@ package iguagile
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/binary"
 	"errors"
-	"io"
-	"net"
-
 	"github.com/lucas-clemente/quic-go"
 )
-
-// Stream provide a ordered byte-stream abstraction to an application.
-type Stream io.ReadWriteCloser
-
-// Conn is a network connection.
-type Conn interface {
-	AcceptStream() (Stream, error)
-	OpenStream() (Stream, error)
-	ReceiveMessage() ([]byte, error)
-	SendMessage([]byte) error
-	Close() error
-}
-
-// Listener is a network listener.
-type Listener interface {
-	Accept() (Conn, error)
-	Addr() net.Addr
-	Close() error
-}
 
 type quicStream struct {
 	stream quic.Stream
@@ -73,7 +50,7 @@ type quicConn struct {
 	sess quic.Session
 }
 
-func (q *quicConn) AcceptStream() (Stream, error) {
+func (q *quicConn) AcceptStream() (*quicStream, error) {
 	stream, err := q.sess.AcceptStream(context.Background())
 	if err != nil {
 		return nil, err
@@ -82,7 +59,7 @@ func (q *quicConn) AcceptStream() (Stream, error) {
 	return &quicStream{stream}, nil
 }
 
-func (q *quicConn) OpenStream() (Stream, error) {
+func (q *quicConn) OpenStream() (*quicStream, error) {
 	stream, err := q.sess.OpenStream()
 	if err != nil {
 		return nil, err
@@ -105,31 +82,4 @@ func (q *quicConn) Close() error {
 
 type quicListener struct {
 	listener quic.Listener
-}
-
-// ListenQuic creates a QUIC server listening on a given address.
-func ListenQuic(address string, tlsConfig *tls.Config) (Listener, error) {
-	l, err := quic.ListenAddr(address, tlsConfig, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &quicListener{l}, nil
-}
-
-func (q *quicListener) Accept() (Conn, error) {
-	sess, err := q.listener.Accept(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	return &quicConn{sess}, nil
-}
-
-func (q *quicListener) Addr() net.Addr {
-	return q.listener.Addr()
-}
-
-func (q *quicListener) Close() error {
-	return q.listener.Close()
 }

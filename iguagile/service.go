@@ -30,13 +30,14 @@ type RoomServiceFactory interface {
 
 // RelayService is a service relays data.
 type RelayService struct {
-	room *Room
+	room   *Room
+	stream *Stream
 }
 
-// Receive receives data and sends to all clients.
-func (s *RelayService) ReceiveFunc(streamName string) (ReceiveFunc, error) {
+// ReceiveFunc is function receives data and sends to all clients.
+func (s *RelayService) ReceiveFunc(_ string) (ReceiveFunc, error) {
 	return func(senderID int, data []byte) error {
-		s.room.SendToAllClients(streamName, data)
+		s.stream.SendToAllClients(data)
 		return nil
 	}, nil
 }
@@ -66,5 +67,13 @@ type RelayServiceFactory struct{}
 
 // Create creates a EmptyRoomService.
 func (f RelayServiceFactory) Create(room *Room) (RoomService, error) {
-	return &RelayService{room: room}, nil
+	stream, err := room.CreateStream("relay")
+	if err != nil {
+		return nil, err
+	}
+
+	return &RelayService{
+		room:   room,
+		stream: stream,
+	}, nil
 }

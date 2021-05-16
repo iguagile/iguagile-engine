@@ -11,13 +11,13 @@ import (
 type Client struct {
 	id      int
 	idByte  []byte
-	conn    Conn
-	streams map[string]Stream
+	conn    *quicConn
+	streams map[string]*quicStream
 	room    *Room
 }
 
 // NewClient is Client constructed.
-func NewClient(room *Room, conn Conn) (*Client, error) {
+func NewClient(room *Room, conn *quicConn) (*Client, error) {
 	id, err := room.generator.Generate()
 	if err != nil {
 		return nil, err
