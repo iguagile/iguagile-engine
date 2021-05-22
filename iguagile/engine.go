@@ -3,8 +3,10 @@ package iguagile
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"github.com/lucas-clemente/quic-go"
 	"log"
 	"net"
 	"os"
@@ -26,7 +28,7 @@ type Engine struct {
 	rooms                *sync.Map
 	factory              RoomServiceFactory
 	store                Store
-	idGenerator          *IDGenerator
+	idGenerator          *idGenerator
 	logger               *log.Logger
 	serverProto          *pb.Server
 	RoomUpdateDuration   time.Duration
@@ -44,7 +46,12 @@ func New(factory RoomServiceFactory, store Store) *Engine {
 	}
 }
 
-func (e *Engine) Start(ctx context.Context, listener Listener, address, apiAddress string) error {
+func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf *tls.Config) error {
+	listener, err := quic.ListenAddr(address, tlsConf, nil)
+	if err != nil {
+		return err
+	}
+
 	host, portStr, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
@@ -91,7 +98,7 @@ func (e *Engine) Start(ctx context.Context, listener Listener, address, apiAddre
 		Token:    token[:],
 	}
 
-	e.idGenerator, err = NewIDGenerator()
+	e.idGenerator, err = newIDGenerator()
 	if err != nil {
 		return err
 	}
@@ -130,12 +137,13 @@ func (e *Engine) Start(ctx context.Context, listener Listener, address, apiAddre
 	}(ctx)
 
 	for {
-		conn, err := listener.Accept()
+		sess, err := listener.Accept(ctx)
 		if err != nil {
 			e.logger.Println(err)
 			continue
 		}
 
+		conn := &quicConn{sess: sess}
 		go func() {
 			if err := e.serve(conn); err != nil {
 				e.logger.Println(err)
@@ -144,7 +152,7 @@ func (e *Engine) Start(ctx context.Context, listener Listener, address, apiAddre
 	}
 }
 
-func (e *Engine) serve(conn Conn) error {
+func (e *Engine) serve(conn *quicConn) error {
 	stream, err := conn.AcceptStream()
 	if err != nil {
 		return err
@@ -235,7 +243,7 @@ func (e *Engine) CreateRoom(ctx context.Context, request *pb.CreateRoomRequest) 
 		return nil, errInvalidToken
 	}
 
-	roomID, err := e.idGenerator.Generate()
+	roomID, err := e.idGenerator.generate()
 	if err != nil {
 		return nil, err
 	}

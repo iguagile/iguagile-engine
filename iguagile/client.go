@@ -18,7 +18,7 @@ type Client struct {
 
 // NewClient is Client constructed.
 func NewClient(room *Room, conn *quicConn) (*Client, error) {
-	id, err := room.generator.Generate()
+	id, err := room.generator.generate()
 	if err != nil {
 		return nil, err
 	}

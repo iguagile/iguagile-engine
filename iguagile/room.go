@@ -14,7 +14,7 @@ import (
 // clients.
 type Room struct {
 	clientManager    *ClientManager
-	generator        *IDGenerator
+	generator        *idGenerator
 	log              *log.Logger
 	host             *Client
 	config           *RoomConfig
@@ -39,7 +39,7 @@ type RoomConfig struct {
 }
 
 func newRoom(engine *Engine, config *RoomConfig) (*Room, error) {
-	gen, err := NewIDGenerator()
+	gen, err := newIDGenerator()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (r *Room) register(client *Client) error {
 
 // unregister requests from clients.
 func (r *Room) unregister(client *Client) error {
-	if err := r.generator.Free(client.GetID()); err != nil {
+	if err := r.generator.free(client.GetID()); err != nil {
 		r.log.Println(err)
 	}
 

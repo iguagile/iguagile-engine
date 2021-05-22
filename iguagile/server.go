@@ -25,7 +25,7 @@ type RoomServer struct {
 	rooms                *sync.Map
 	factory              RoomServiceFactory
 	store                Store
-	idGenerator          *IDGenerator
+	idGenerator          *idGenerator
 	logger               *log.Logger
 	serverProto          *pb.Server
 	RoomUpdateDuration   time.Duration
@@ -64,7 +64,7 @@ func NewRoomServer(factory RoomServiceFactory, store Store, address string) (*Ro
 		Token:    token[:],
 	}
 
-	idGenerator, err := NewIDGenerator()
+	idGenerator, err := newIDGenerator()
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (s *RoomServer) CreateRoom(ctx context.Context, request *pb.CreateRoomReque
 		return nil, errInvalidToken
 	}
 
-	roomID, err := s.idGenerator.Generate()
+	roomID, err := s.idGenerator.generate()
 	if err != nil {
 		return nil, err
 	}
