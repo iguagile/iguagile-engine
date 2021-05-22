@@ -6,13 +6,14 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"github.com/lucas-clemente/quic-go"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/lucas-clemente/quic-go"
 
 	"github.com/google/uuid"
 	pb "github.com/iguagile/iguagile-room-proto/room"
