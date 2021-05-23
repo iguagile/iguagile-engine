@@ -24,6 +24,7 @@ const (
 	userStreamPrefix = "U"
 )
 
+// Engine is engine manages rooms.
 type Engine struct {
 	serverID             int
 	rooms                *sync.Map
@@ -36,6 +37,7 @@ type Engine struct {
 	ServerUpdateDuration time.Duration
 }
 
+// New is a constructor of Engine.
 func New(factory RoomServiceFactory, store Store) *Engine {
 	return &Engine{
 		rooms:                &sync.Map{},
@@ -47,6 +49,7 @@ func New(factory RoomServiceFactory, store Store) *Engine {
 	}
 }
 
+// Start api and room engine.
 func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf *tls.Config) error {
 	listener, err := quic.ListenAddr(address, tlsConf, nil)
 	if err != nil {
