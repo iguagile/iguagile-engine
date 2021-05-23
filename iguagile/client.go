@@ -37,28 +37,14 @@ func NewClient(room *Room, conn *quicConn) (*Client, error) {
 }
 
 func (c *Client) readStart() {
-	for {
-		buf := make([]byte, maxMessageSize)
-		stream, err := c.conn.AcceptStream()
-		if err != nil {
-			c.room.log.Println(err)
-			c.room.CloseConnection(c)
-			break
-		}
-
-		go func() {
-			n, err := stream.Read(buf)
+	for _, stream := range c.streams {
+		go func(stream *quicStream) {
+			buf := make([]byte, maxMessageSize)
+			receive, err := c.room.service.ReceiveFunc(stream.name)
 			if err != nil {
 				c.room.log.Println(err)
+				return
 			}
-
-			streamName := string(buf[:n])
-			c.streams[streamName] = stream
-			receive, err := c.room.service.ReceiveFunc(streamName)
-			if err != nil {
-				c.room.log.Println(err)
-			}
-
 			for {
 				n, err := stream.Read(buf)
 				if err != nil {
@@ -70,7 +56,7 @@ func (c *Client) readStart() {
 					c.room.log.Println(err)
 				}
 			}
-		}()
+		}(stream)
 	}
 }
 

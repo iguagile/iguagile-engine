@@ -2,7 +2,7 @@ package iguagile
 
 type Stream struct {
 	r       *Room
-	streams map[int]quicStream
+	streams map[int]*quicStream
 }
 
 func (s *Stream) SendToAllClients(message []byte) {

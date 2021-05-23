@@ -84,6 +84,20 @@ func (r *Room) register(client *Client) error {
 		r.host = client
 	}
 
+	for name, s := range r.streams {
+		stream, err := client.conn.OpenStream()
+		if err != nil {
+			return err
+		}
+
+		if _, err := stream.Write([]byte(name)); err != nil {
+			return err
+		}
+
+		s.streams[client.id] = stream
+		client.streams[name] = stream
+	}
+
 	go client.readStart()
 
 	return r.service.OnRegisterClient(client.id)
@@ -107,6 +121,8 @@ func (r *Room) unregister(client *Client) error {
 	return r.service.OnUnregisterClient(client.id)
 }
 
+// CreateStream creates new stream.
+// Call in the Create method implemented in RoomServiceFactory.
 func (r *Room) CreateStream(streamName string) (*Stream, error) {
 	if r.ready {
 		return nil, errors.New("call CreateStream in the Create method implemented in RoomServiceFactory")
@@ -118,7 +134,7 @@ func (r *Room) CreateStream(streamName string) (*Stream, error) {
 
 	stream := &Stream{
 		r:       r,
-		streams: map[int]quicStream{},
+		streams: map[int]*quicStream{},
 	}
 
 	r.streams[streamName] = stream

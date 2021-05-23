@@ -9,6 +9,7 @@ import (
 
 type quicStream struct {
 	stream quic.Stream
+	name   string
 }
 
 func (q *quicStream) Read(buf []byte) (int, error) {
@@ -56,7 +57,7 @@ func (q *quicConn) AcceptStream() (*quicStream, error) {
 		return nil, err
 	}
 
-	return &quicStream{stream}, nil
+	return &quicStream{stream: stream}, nil
 }
 
 func (q *quicConn) OpenStream() (*quicStream, error) {
@@ -65,7 +66,7 @@ func (q *quicConn) OpenStream() (*quicStream, error) {
 		return nil, err
 	}
 
-	return &quicStream{stream}, nil
+	return &quicStream{stream: stream}, nil
 }
 
 func (q *quicConn) ReceiveMessage() ([]byte, error) {
