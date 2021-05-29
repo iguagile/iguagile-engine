@@ -128,6 +128,8 @@ func (r *Room) CreateStream(streamName string) (*Stream, error) {
 		return nil, errors.New("call CreateStream in the Create method implemented in RoomServiceFactory")
 	}
 
+	streamName = userStreamPrefix + streamName
+
 	if _, ok := r.streams[streamName]; ok {
 		return nil, fmt.Errorf("%v has already been created", streamName)
 	}
