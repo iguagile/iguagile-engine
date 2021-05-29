@@ -3,6 +3,8 @@ package iguagile
 import (
 	"context"
 	"encoding/binary"
+	"errors"
+	"io"
 
 	"github.com/lucas-clemente/quic-go"
 )
@@ -22,7 +24,7 @@ func (q *quicStream) Read(buf []byte) (int, error) {
 	receivedSizeSum := 0
 	for receivedSizeSum < size {
 		receivedSize, err := q.stream.Read(buf[receivedSizeSum:size])
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return 0, err
 		}
 
