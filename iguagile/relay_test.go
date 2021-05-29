@@ -11,9 +11,10 @@ import (
 	"encoding/pem"
 	"io"
 	"math/big"
-	"net"
 	"os"
 	"testing"
+
+	"github.com/lucas-clemente/quic-go"
 )
 
 const (
@@ -32,18 +33,6 @@ var (
 	roomToken = []byte{1}
 	testData  = []byte("test data")
 )
-
-func setupServer() error {
-	factory := &RelayServiceFactory{}
-	store, err := NewRedis(os.Getenv("REDIS_HOST"))
-	if err != nil {
-		return err
-	}
-
-	engine = New(factory, store)
-
-	return nil
-}
 
 func createRoom() (*Room, error) {
 	conf := &RoomConfig{
@@ -71,9 +60,13 @@ func createRoom() (*Room, error) {
 }
 
 func startServer() error {
-	if err := setupServer(); err != nil {
+	factory := new(RelayServiceFactory)
+	store, err := NewRedis(os.Getenv("REDIS_HOST"))
+	if err != nil {
 		return err
 	}
+
+	engine = New(factory, store)
 
 	tlsConf, err := generateTLSConfig()
 	if err != nil {
@@ -126,21 +119,44 @@ func TestRelayService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	conn, err := net.Dial("tcp", address)
+	tlsConf := &tls.Config{
+		NextProtos:         []string{"iguagile-test"},
+		InsecureSkipVerify: true,
+	}
+
+	sess, err := quic.DialAddr(address, tlsConf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := verify(conn); err != nil {
+	stream, err := sess.OpenStream()
+
+	if err := verify(stream); err != nil {
 		t.Fatal(err)
 	}
+	_ = stream.Close()
 
-	if err := send(conn, testData); err != nil {
+	stream, err = sess.AcceptStream(context.Background())
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	buf := make([]byte, maxMessageSize)
-	n, err := receive(conn, buf)
+
+	n, err := receive(stream, buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(buf[:n], []byte("Urelay")) {
+		t.Errorf("invalid stream name %v", string(buf[:n]))
+	}
+
+	if err := send(stream, testData); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err = receive(stream, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
