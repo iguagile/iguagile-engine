@@ -27,10 +27,11 @@ func NewClient(room *Room, conn *quicConn) (*Client, error) {
 	binary.LittleEndian.PutUint16(idByte, uint16(id))
 
 	client := &Client{
-		id:     id,
-		idByte: idByte,
-		conn:   conn,
-		room:   room,
+		id:      id,
+		idByte:  idByte,
+		conn:    conn,
+		room:    room,
+		streams: map[string]*quicStream{},
 	}
 
 	return client, nil
