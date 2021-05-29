@@ -2,16 +2,23 @@ package iguagile
 
 import (
 	"bytes"
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
+	"encoding/pem"
 	"io"
+	"math/big"
 	"net"
 	"os"
 	"testing"
 )
 
 const (
-	address  = "localhost:12345"
-	grpcPort = 11111
+	address = "localhost:8080"
+	apiAddr = "localhost:8081"
 
 	serverID   = 1 << 16
 	roomID     = 1 | serverID
@@ -21,9 +28,9 @@ const (
 )
 
 var (
-	roomServer *RoomServer
-	roomToken  = []byte{1}
-	testData   = []byte("test data")
+	engine    *Engine
+	roomToken = []byte{1}
+	testData  = []byte("test data")
 )
 
 func setupServer() error {
@@ -33,10 +40,7 @@ func setupServer() error {
 		return err
 	}
 
-	roomServer, err = NewRoomServer(factory, store, address)
-	if err != nil {
-		return err
-	}
+	engine = New(factory, store)
 
 	return nil
 }
@@ -51,17 +55,17 @@ func createRoom() (*Room, error) {
 		Token:           roomToken,
 	}
 
-	room, err := newRoom(roomServer, conf)
+	room, err := newRoom(engine, conf)
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := roomServer.factory.Create(room)
+	service, err := engine.factory.Create(room)
 	if err != nil {
 		return nil, err
 	}
 	room.service = service
-	roomServer.rooms.Store(roomID, room)
+	engine.rooms.Store(roomID, room)
 
 	return room, nil
 }
@@ -71,12 +75,13 @@ func startServer() error {
 		return err
 	}
 
-	listener, err := net.Listen("tcp", address)
+	tlsConf, err := generateTLSConfig()
 	if err != nil {
 		return err
 	}
+
 	go func() {
-		_ = roomServer.Run(listener, grpcPort)
+		_ = engine.Start(context.Background(), address, apiAddr, tlsConf)
 	}()
 
 	return nil
@@ -145,4 +150,31 @@ func TestRelayService(t *testing.T) {
 	}
 
 	t.Logf("%v, %v", buf[:n], testData)
+}
+
+func generateTLSConfig() (*tls.Config, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, err
+	}
+
+	template := x509.Certificate{SerialNumber: big.NewInt(1)}
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tls.Config{
+		Certificates:       []tls.Certificate{tlsCert},
+		NextProtos:         []string{"iguagile-test"},
+		InsecureSkipVerify: true,
+	}, nil
 }
