@@ -5,9 +5,8 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
         environment:
-          GO111MODULE: "on"
           REDIS_HOST: "localhost:6379"
       - image: redis:latest
     working_directory: /go/src/github.com/iguagile/iguagile-engine
