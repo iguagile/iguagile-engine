@@ -66,6 +66,10 @@ func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf 
 		return err
 	}
 
+	if port < 0 && port > 65535 {
+		return fmt.Errorf("port number is out of valid range %v", port)
+	}
+
 	_, apiPortStr, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
@@ -74,6 +78,10 @@ func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf 
 	apiPort, err := strconv.Atoi(apiPortStr)
 	if err != nil {
 		return err
+	}
+
+	if apiPort < 0 && apiPort > 65535 {
+		return fmt.Errorf("api port number is out of valid range %v", apiPort)
 	}
 
 	serverID, err := e.store.GenerateServerID()
