@@ -214,7 +214,7 @@ func (e *Engine) serve(conn *quicConn) error {
 
 	password := string(buf[:n])
 	if room.config.Password != "" && password != room.config.Password {
-		return fmt.Errorf("invalid password %v %v", password, room.config.Password)
+		return fmt.Errorf("invalid password")
 	}
 
 	if !room.creatorConnected {
