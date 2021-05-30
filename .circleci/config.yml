@@ -12,8 +12,8 @@ jobs:
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:
       - checkout
-      - run: go get golang.org/x/tools/cmd/goimports && diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./lib/*")) <(printf "")
-      - run: go get -u golang.org/x/lint/golint && golint -set_exit_status ./...
+      - run: go install golang.org/x/tools/cmd/goimports && diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./lib/*")) <(printf "")
+      - run: go install -u golang.org/x/lint/golint && golint -set_exit_status ./...
       - run: go test -bench=. -v ./...
       - run: bash ./fail_test.bash
 
