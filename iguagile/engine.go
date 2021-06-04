@@ -119,9 +119,14 @@ func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf 
 		return err
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	go func(ctx context.Context) {
 		serverTicker := time.NewTicker(e.ServerUpdateDuration)
 		roomTicker := time.NewTicker(e.RoomUpdateDuration)
+		defer serverTicker.Stop()
+		defer roomTicker.Stop()
 		for {
 			select {
 			case <-serverTicker.C:
@@ -157,14 +162,14 @@ func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf 
 
 		conn := &quicConn{sess: sess}
 		go func() {
-			if err := e.serve(conn); err != nil {
+			if err := e.serve(ctx, conn); err != nil {
 				e.logger.Println(err)
 			}
 		}()
 	}
 }
 
-func (e *Engine) serve(conn *quicConn) error {
+func (e *Engine) serve(ctx context.Context, conn *quicConn) error {
 	stream, err := conn.AcceptStream()
 	if err != nil {
 		return err
@@ -244,7 +249,7 @@ func (e *Engine) serve(conn *quicConn) error {
 		room.creatorConnected = true
 	}
 
-	return room.serve(conn)
+	return room.serve(ctx, conn)
 }
 
 var errInvalidToken = fmt.Errorf("invalid room engine api token")

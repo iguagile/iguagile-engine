@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -37,7 +38,7 @@ func NewClient(room *Room, conn *quicConn) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) readStart() {
+func (c *Client) readStart(ctx context.Context) {
 	for _, stream := range c.streams {
 		go func(stream *quicStream) {
 			buf := make([]byte, maxMessageSize)
@@ -47,6 +48,12 @@ func (c *Client) readStart() {
 				return
 			}
 			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
 				n, err := stream.Read(buf)
 				if err != nil {
 					c.room.log.Println(err)

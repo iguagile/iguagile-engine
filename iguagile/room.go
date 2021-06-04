@@ -1,6 +1,7 @@
 package iguagile
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -56,7 +57,7 @@ func newRoom(engine *Engine, config *RoomConfig) (*Room, error) {
 	}, nil
 }
 
-func (r *Room) serve(conn *quicConn) error {
+func (r *Room) serve(ctx context.Context, conn *quicConn) error {
 	client, err := NewClient(r, conn)
 	if err != nil {
 		return err
@@ -66,7 +67,7 @@ func (r *Room) serve(conn *quicConn) error {
 	if err := r.store.RegisterRoom(r.roomProto); err != nil {
 		r.log.Println(err)
 	}
-	return r.register(client)
+	return r.register(ctx, client)
 }
 
 const (
@@ -75,7 +76,7 @@ const (
 )
 
 // register requests from the clients.
-func (r *Room) register(client *Client) error {
+func (r *Room) register(ctx context.Context, client *Client) error {
 	if err := r.clientManager.Add(client); err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (r *Room) register(client *Client) error {
 		client.streams[name] = stream
 	}
 
-	go client.readStart()
+	client.readStart(ctx)
 
 	return r.service.OnRegisterClient(client.id)
 }
