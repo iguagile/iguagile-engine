@@ -172,7 +172,7 @@ func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf 
 }
 
 func (e *Engine) verifyClientIndication(ctx context.Context, conn *quicConn) error {
-	stream, err := conn.sess.OpenStream()
+	stream, err := conn.sess.AcceptUniStream(ctx)
 	if err != nil {
 		return err
 	}
