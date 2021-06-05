@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -169,7 +171,46 @@ func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf 
 	}
 }
 
+func (e *Engine) verifyClientIndication(ctx context.Context, conn *quicConn) error {
+	stream, err := conn.sess.OpenStream()
+	if err != nil {
+		return err
+	}
+
+	buf := make([]byte, maxMessageSize)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Key
+		if _, err := stream.Read(buf[:2]); err != nil {
+			return err
+		}
+
+		// Value length
+		if _, err := stream.Read(buf[:2]); err != nil {
+			return err
+		}
+		l := int(binary.BigEndian.Uint16(buf[:2]))
+
+		// Value
+		if _, err := stream.Read(buf[:l]); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+	}
+}
+
 func (e *Engine) serve(ctx context.Context, conn *quicConn) error {
+	if err := e.verifyClientIndication(ctx, conn); err != nil {
+		return err
+	}
+
 	stream, err := conn.AcceptStream()
 	if err != nil {
 		return err
