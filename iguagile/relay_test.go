@@ -2,16 +2,24 @@ package iguagile
 
 import (
 	"bytes"
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
+	"encoding/pem"
 	"io"
-	"net"
+	"math/big"
 	"os"
 	"testing"
+
+	"github.com/lucas-clemente/quic-go"
 )
 
 const (
-	address  = "localhost:12345"
-	grpcPort = 11111
+	address = "localhost:8080"
+	apiAddr = "localhost:8081"
 
 	serverID   = 1 << 16
 	roomID     = 1 | serverID
@@ -21,25 +29,10 @@ const (
 )
 
 var (
-	roomServer *RoomServer
-	roomToken  = []byte{1}
-	testData   = []byte("test data")
+	engine    *Engine
+	roomToken = []byte{1}
+	testData  = []byte("test data")
 )
-
-func setupServer() error {
-	factory := &RelayServiceFactory{}
-	store, err := NewRedis(os.Getenv("REDIS_HOST"))
-	if err != nil {
-		return err
-	}
-
-	roomServer, err = NewRoomServer(factory, store, address)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func createRoom() (*Room, error) {
 	conf := &RoomConfig{
@@ -51,32 +44,37 @@ func createRoom() (*Room, error) {
 		Token:           roomToken,
 	}
 
-	room, err := newRoom(roomServer, conf)
+	room, err := newRoom(engine, conf)
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := roomServer.factory.Create(room)
+	service, err := engine.factory.Create(room)
 	if err != nil {
 		return nil, err
 	}
 	room.service = service
-	roomServer.rooms.Store(roomID, room)
+	engine.rooms.Store(roomID, room)
 
 	return room, nil
 }
 
 func startServer() error {
-	if err := setupServer(); err != nil {
-		return err
-	}
-
-	listener, err := net.Listen("tcp", address)
+	factory := new(RelayServiceFactory)
+	store, err := NewRedis(os.Getenv("REDIS_HOST"))
 	if err != nil {
 		return err
 	}
+
+	engine = New(factory, store)
+
+	tlsConf, err := generateTLSConfig()
+	if err != nil {
+		return err
+	}
+
 	go func() {
-		_ = roomServer.Run(listener, grpcPort)
+		_ = engine.Start(context.Background(), address, apiAddr, tlsConf)
 	}()
 
 	return nil
@@ -121,21 +119,44 @@ func TestRelayService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	conn, err := net.Dial("tcp", address)
+	tlsConf := &tls.Config{
+		NextProtos:         []string{"iguagile-test"},
+		InsecureSkipVerify: true,
+	}
+
+	sess, err := quic.DialAddr(address, tlsConf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := verify(conn); err != nil {
+	stream, err := sess.OpenStream()
+
+	if err := verify(stream); err != nil {
 		t.Fatal(err)
 	}
+	_ = stream.Close()
 
-	if err := send(conn, testData); err != nil {
+	stream, err = sess.AcceptStream(context.Background())
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	buf := make([]byte, maxMessageSize)
-	n, err := receive(conn, buf)
+
+	n, err := receive(stream, buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(buf[:n], []byte("Urelay")) {
+		t.Errorf("invalid stream name %v", string(buf[:n]))
+	}
+
+	if err := send(stream, testData); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err = receive(stream, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,4 +166,31 @@ func TestRelayService(t *testing.T) {
 	}
 
 	t.Logf("%v, %v", buf[:n], testData)
+}
+
+func generateTLSConfig() (*tls.Config, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, err
+	}
+
+	template := x509.Certificate{SerialNumber: big.NewInt(1)}
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tls.Config{
+		Certificates:       []tls.Certificate{tlsCert},
+		NextProtos:         []string{"iguagile-test"},
+		InsecureSkipVerify: true,
+	}, nil
 }

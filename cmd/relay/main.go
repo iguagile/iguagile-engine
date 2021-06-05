@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"log"
-	"net"
+	"math/big"
 	"os"
-	"strconv"
 
 	"github.com/iguagile/iguagile-engine/iguagile"
 )
@@ -12,29 +17,48 @@ import (
 func main() {
 	factory := &iguagile.RelayServiceFactory{}
 	address := os.Getenv("ROOM_HOST")
-	if address == "" {
-		address = "localhost:0"
-	}
+	apiAddr := os.Getenv("GRPC_HOST")
 
 	store, err := iguagile.NewRedis(os.Getenv("REDIS_HOST"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	server, err := iguagile.NewRoomServer(factory, store, address)
+	engine := iguagile.New(factory, store)
+
+	tlsConf, err := generateTLSConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	listener, err := net.Listen("tcp", address)
-	if err != nil {
+	if err := engine.Start(context.Background(), address, apiAddr, tlsConf); err != nil {
 		log.Fatal(err)
 	}
+}
 
-	port, err := strconv.Atoi(os.Getenv("GRPC_PORT"))
+func generateTLSConfig() (*tls.Config, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	log.Fatal(server.Run(listener, port))
+	template := x509.Certificate{SerialNumber: big.NewInt(1)}
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tls.Config{
+		Certificates:       []tls.Certificate{tlsCert},
+		NextProtos:         []string{"iguagile-example"},
+		InsecureSkipVerify: true,
+	}, nil
 }

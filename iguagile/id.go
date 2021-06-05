@@ -6,13 +6,13 @@ import (
 	"github.com/minami14/idgo"
 )
 
-// IDGenerator generates id.
-type IDGenerator struct {
+// idGenerator generates id.
+type idGenerator struct {
 	generator *idgo.IDGenerator
 }
 
-// NewIDGenerator is IDGenerator constructed.
-func NewIDGenerator() (*IDGenerator, error) {
+// newIDGenerator is idGenerator constructed.
+func newIDGenerator() (*idGenerator, error) {
 	store, err := idgo.NewLocalStore(math.MaxInt16)
 	if err != nil {
 		return nil, err
@@ -23,15 +23,15 @@ func NewIDGenerator() (*IDGenerator, error) {
 		return nil, err
 	}
 
-	return &IDGenerator{generator}, nil
+	return &idGenerator{generator}, nil
 }
 
-// Generate generates a id.
-func (g *IDGenerator) Generate() (int, error) {
+// generate generates a id.
+func (g *idGenerator) generate() (int, error) {
 	return g.generator.Generate()
 }
 
-// Free deallocates the id.
-func (g *IDGenerator) Free(id int) error {
+// free deallocates the id.
+func (g *idGenerator) free(id int) error {
 	return g.generator.Free(id)
 }

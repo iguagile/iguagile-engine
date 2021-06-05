@@ -1,9 +1,13 @@
 package iguagile
 
+// ReceiveFunc processes data send from the client to the engine.
+type ReceiveFunc func(senderID int, data []byte) error
+
 // RoomService implements the processing performed by the room
 type RoomService interface {
-	// Receive processes data sent from the client to the server.
-	Receive(senderID int, data []byte) error
+	// ReceiveFunc returns function processes data sent from the client to the engine.
+	// This method is called once every time the client connects.
+	ReceiveFunc(streamName string) (ReceiveFunc, error)
 
 	// OnRegisterClient is called when the client connects to the room.
 	OnRegisterClient(clientID int) error
@@ -26,13 +30,16 @@ type RoomServiceFactory interface {
 
 // RelayService is a service relays data.
 type RelayService struct {
-	room *Room
+	room   *Room
+	stream *Stream
 }
 
-// Receive receives data and sends to all clients.
-func (s *RelayService) Receive(senderID int, data []byte) error {
-	s.room.SendToAllClients(senderID, data)
-	return nil
+// ReceiveFunc is function receives data and sends to all clients.
+func (s *RelayService) ReceiveFunc(_ string) (ReceiveFunc, error) {
+	return func(senderID int, data []byte) error {
+		s.stream.SendToAllClients(data)
+		return nil
+	}, nil
 }
 
 // OnRegisterClient for implement RoomService.
@@ -60,5 +67,13 @@ type RelayServiceFactory struct{}
 
 // Create creates a EmptyRoomService.
 func (f RelayServiceFactory) Create(room *Room) (RoomService, error) {
-	return &RelayService{room: room}, nil
+	stream, err := room.CreateStream("relay")
+	if err != nil {
+		return nil, err
+	}
+
+	return &RelayService{
+		room:   room,
+		stream: stream,
+	}, nil
 }

@@ -1,7 +1,9 @@
 package iguagile
 
 import (
-	"io"
+	"context"
+	"errors"
+	"fmt"
 	"log"
 	"math"
 	"os"
@@ -13,16 +15,17 @@ import (
 // clients.
 type Room struct {
 	clientManager    *ClientManager
-	rpcBufferManager *RPCBufferManager
-	generator        *IDGenerator
+	generator        *idGenerator
 	log              *log.Logger
 	host             *Client
 	config           *RoomConfig
 	creatorConnected bool
 	roomProto        *pb.Room
 	store            Store
-	server           *RoomServer
+	engine           *Engine
 	service          RoomService
+	streams          map[string]*Stream
+	ready            bool
 }
 
 // RoomConfig is room config.
@@ -36,25 +39,25 @@ type RoomConfig struct {
 	Token           []byte
 }
 
-func newRoom(server *RoomServer, config *RoomConfig) (*Room, error) {
-	gen, err := NewIDGenerator()
+func newRoom(engine *Engine, config *RoomConfig) (*Room, error) {
+	gen, err := newIDGenerator()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Room{
-		clientManager:    NewClientManager(),
-		rpcBufferManager: NewRPCBufferManager(),
-		generator:        gen,
-		log:              log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
-		config:           config,
-		store:            server.store,
-		roomProto:        &pb.Room{},
-		server:           server,
+		clientManager: NewClientManager(),
+		generator:     gen,
+		log:           log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
+		config:        config,
+		store:         engine.store,
+		roomProto:     &pb.Room{},
+		engine:        engine,
+		streams:       map[string]*Stream{},
 	}, nil
 }
 
-func (r *Room) serve(conn io.ReadWriteCloser) error {
+func (r *Room) serve(ctx context.Context, conn *quicConn) error {
 	client, err := NewClient(r, conn)
 	if err != nil {
 		return err
@@ -64,7 +67,7 @@ func (r *Room) serve(conn io.ReadWriteCloser) error {
 	if err := r.store.RegisterRoom(r.roomProto); err != nil {
 		r.log.Println(err)
 	}
-	return r.register(client)
+	return r.register(ctx, client)
 }
 
 const (
@@ -73,24 +76,37 @@ const (
 )
 
 // register requests from the clients.
-func (r *Room) register(client *Client) error {
+func (r *Room) register(ctx context.Context, client *Client) error {
 	if err := r.clientManager.Add(client); err != nil {
 		return err
 	}
 
-	go client.writeStart()
 	if r.clientManager.Count() == 1 {
 		r.host = client
 	}
 
-	go client.readStart()
+	for name, s := range r.streams {
+		stream, err := client.conn.OpenStream()
+		if err != nil {
+			return err
+		}
+
+		if _, err := stream.Write([]byte(name)); err != nil {
+			return err
+		}
+
+		s.streams[client.id] = stream
+		client.streams[name] = stream
+	}
+
+	client.readStart(ctx)
 
 	return r.service.OnRegisterClient(client.id)
 }
 
 // unregister requests from clients.
 func (r *Room) unregister(client *Client) error {
-	if err := r.generator.Free(client.GetID()); err != nil {
+	if err := r.generator.free(client.GetID()); err != nil {
 		r.log.Println(err)
 	}
 
@@ -106,40 +122,27 @@ func (r *Room) unregister(client *Client) error {
 	return r.service.OnUnregisterClient(client.id)
 }
 
-// SendToHost sends outbound message to the host.
-func (r *Room) SendToHost(senderID int, message []byte) {
-	r.host.Send(message)
-}
-
-// SendToClient sends outbound message to the client.
-func (r *Room) SendToClient(targetID, senderID int, message []byte) {
-	client, err := r.clientManager.Get(targetID)
-	if err != nil {
-		r.log.Println(err)
-		return
+// CreateStream creates new stream.
+// Call in the Create method implemented in RoomServiceFactory.
+func (r *Room) CreateStream(streamName string) (*Stream, error) {
+	if r.ready {
+		return nil, errors.New("call CreateStream in the Create method implemented in RoomServiceFactory")
 	}
 
-	client.Send(message)
-}
+	streamName = userStreamPrefix + streamName
 
-// SendToAllClients sends outbound message to all registered clients.
-func (r *Room) SendToAllClients(senderID int, message []byte) {
-	r.clientManager.Lock()
-	defer r.clientManager.Unlock()
-	for _, client := range r.clientManager.GetAllClients() {
-		client.Send(message)
+	if _, ok := r.streams[streamName]; ok {
+		return nil, fmt.Errorf("%v has already been created", streamName)
 	}
-}
 
-// SendToOtherClients sends outbound message to other registered clients.
-func (r *Room) SendToOtherClients(senderID int, message []byte) {
-	r.clientManager.Lock()
-	defer r.clientManager.Unlock()
-	for id, client := range r.clientManager.GetAllClients() {
-		if id != senderID {
-			client.Send(message)
-		}
+	stream := &Stream{
+		r:       r,
+		streams: map[int]*quicStream{},
 	}
+
+	r.streams[streamName] = stream
+
+	return stream, nil
 }
 
 // CloseConnection closes the connection and unregisters the client.
@@ -162,6 +165,6 @@ func (r *Room) Close() error {
 		}
 	}
 
-	r.server.rooms.Delete(r.config.RoomID)
+	r.engine.rooms.Delete(r.config.RoomID)
 	return r.service.Destroy()
 }
