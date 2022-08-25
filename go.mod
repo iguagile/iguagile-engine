@@ -1,6 +1,6 @@
 module github.com/iguagile/iguagile-engine
 
-go 1.14
+go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.2
