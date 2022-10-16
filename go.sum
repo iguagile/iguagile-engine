@@ -34,6 +34,8 @@ github.com/iguagile/iguagile-room-proto v0.0.0-20220930071210-943254feed57 h1:XC
 github.com/iguagile/iguagile-room-proto v0.0.0-20220930071210-943254feed57/go.mod h1:InhtDEA+J3y3Du7AFzJZWGYdzUi6BLGQe8LduL+v0XM=
 github.com/iguagile/iguagile-room-proto v0.0.0-20220930110713-15b3c4b34ebc h1:/axPAlskB8Hrr2dva5Pxe7WWjqtLiOQPrHi17ZpEbZc=
 github.com/iguagile/iguagile-room-proto v0.0.0-20220930110713-15b3c4b34ebc/go.mod h1:UayQm3uWXwh7udcAK1kz4sFTlgmn+oQTGZfKSrEbTgg=
+github.com/iguagile/iguagile-room-proto v0.0.0-20221016050922-c41528b00c56 h1:CR1fsixBu44WQ5dl3Wz/AI068FGRhr5AI+IZ8WdkF9U=
+github.com/iguagile/iguagile-room-proto v0.0.0-20221016050922-c41528b00c56/go.mod h1:oQENn6si/X2ObpANHWrlGyLZMnlOw6B+K0VWT/mm5qc=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/minami14/go-bitarray v1.1.2 h1:E+Nd3dGG+aLhpVlSaJCC7Fh+3xGsaT0zbuvrrJC+dyg=
 github.com/minami14/go-bitarray v1.1.2/go.mod h1:i6OBYFrV3uyrMpN1jwB2fAwLypdT9FIPAOiognNQ8wc=
