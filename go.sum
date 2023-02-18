@@ -7,8 +7,6 @@ github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/iguagile/iguagile-room-proto v0.0.0-20230126053804-d1c653d3099b h1:dS+i27woLc6NcPxTBWhxtsNzVxVkYXBjQ398uaR8hZU=
-github.com/iguagile/iguagile-room-proto v0.0.0-20230126053804-d1c653d3099b/go.mod h1:TAeDXxEbUUvv8igkHQDr4P4ij0zwJW9rzviGjhUCj8o=
 github.com/iguagile/iguagile-room-proto v0.0.0-20230208040055-3970215b35de h1:BsN82dGwiDeX6YoJfD71tMCScsejGgWLX+AximGyhXQ=
 github.com/iguagile/iguagile-room-proto v0.0.0-20230208040055-3970215b35de/go.mod h1:N8jTkjDzHwk4pRJxowS7vpo7wBXnZDNa/p56YOChl40=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
@@ -16,12 +14,12 @@ github.com/minami14/go-bitarray v1.1.2 h1:E+Nd3dGG+aLhpVlSaJCC7Fh+3xGsaT0zbuvrrJ
 github.com/minami14/go-bitarray v1.1.2/go.mod h1:i6OBYFrV3uyrMpN1jwB2fAwLypdT9FIPAOiognNQ8wc=
 github.com/minami14/idgo v1.1.1 h1:hxokBHDQUqTMQhv2GOPFnLQ2QHHi5rGOKO7/woni17s=
 github.com/minami14/idgo v1.1.1/go.mod h1:oxMlMROuiDEbZbOHzGw5D0mpsv8oGuLsBjUrwiRn9po=
-golang.org/x/net v0.5.0 h1:GyT4nK/YDHSqa1c4753ouYCDajOYKTja9Xb/OHtgvSw=
-golang.org/x/net v0.5.0/go.mod h1:DivGGAXEgPSlEBzxGzZI+ZLohi+xUj054jfeKui00ws=
-golang.org/x/sys v0.4.0 h1:Zr2JFtRQNX3BCZ8YtxRE9hNJYC8J6I1MVbMg6owUp18=
-golang.org/x/sys v0.4.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/text v0.6.0 h1:3XmdazWV+ubf7QgHSTWeykHOci5oeekaGJBLkrkaw4k=
-golang.org/x/text v0.6.0/go.mod h1:mrYo+phRRbMaCq/xk9113O4dZlRixOauAjOtrjsXDZ8=
+golang.org/x/net v0.7.0 h1:rJrUqqhjsgNp7KqAIc25s9pZnjU7TUcSY7HcVZjdn1g=
+golang.org/x/net v0.7.0/go.mod h1:2Tu9+aMcznHK/AK1HMvgo6xiTLG5rD5rZLDS+rp2Bjs=
+golang.org/x/sys v0.5.0 h1:MUK/U/4lj1t1oPg0HfuXDN/Z1wv31ZJ/YcPiGccS4DU=
+golang.org/x/sys v0.5.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/text v0.7.0 h1:4BRB4x83lYWy72KwLD/qYDuTu7q9PjSagHvijDw7cLo=
+golang.org/x/text v0.7.0/go.mod h1:mrYo+phRRbMaCq/xk9113O4dZlRixOauAjOtrjsXDZ8=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f h1:BWUVssLB0HVOSY78gIdvk1dTVYtT1y8SBWtPYuTJ/6w=
 google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f/go.mod h1:RGgjbofJ8xD9Sq1VVhDM1Vok1vRONV+rg+CjzG4SZKM=
