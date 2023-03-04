@@ -7,14 +7,15 @@ jobs:
     docker:
       - image: golang:1.19
         environment:
-          GO111MODULE: "on"
           REDIS_HOST: "localhost:6379"
       - image: redis:latest
     working_directory: /go/src/github.com/iguagile/iguagile-engine
     steps:
+      - run: go install golang.org/x/tools/cmd/goimports@latest
+      - run: go install golang.org/x/lint/golint@latest
       - checkout
-      - run: go get golang.org/x/tools/cmd/goimports && diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./lib/*")) <(printf "")
-      - run: go install golang.org/x/lint/golint@latest && golint -set_exit_status ./...
+      - run: diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./lib/*")) <(printf "")
+      - run: golint -set_exit_status ./...
       - run: go test -bench=. -v ./...
       - run: bash ./fail_test.bash
 
