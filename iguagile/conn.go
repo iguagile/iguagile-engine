@@ -38,7 +38,7 @@ func (q *quicStream) Close() error {
 }
 
 type quicConn struct {
-	sess quic.Session
+	sess quic.Connection
 }
 
 func (q *quicConn) AcceptStream() (*quicStream, error) {

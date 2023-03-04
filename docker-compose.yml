@@ -4,8 +4,7 @@ services:
   redis:
     image: redis:latest
     ports:
-      - 6379:6379
-
+      - "6379:6379"
 
   iguagile-api:
     image: iguagile/iguagile-api:latest
