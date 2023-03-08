@@ -3,7 +3,7 @@ module github.com/iguagile/iguagile-engine
 go 1.19
 
 require (
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.3
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/iguagile/iguagile-room-proto v0.0.0-20230225070552-d9cae34a9883
