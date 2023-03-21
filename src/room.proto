@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package iguagile;
+
+service RoomService {
+    rpc CreateRoom (CreateRoomRequest) returns (CreateRoomResponse);
+}
+
+message CreateRoomRequest {
+    string application_name = 1;
+    string version = 2;
+    string password = 3;
+    int32 max_user = 4;
+    bytes room_token = 5;
+    bytes server_token = 6;
+    map<string, string> information = 7;
+}
+
+message CreateRoomResponse {
+    Room room = 1;
+}
+
+message Room {
+    int32 room_id = 1;
+    bool require_password = 2;
+    int32 max_user = 3;
+    int32 connected_user = 4;
+    Server server = 5;
+    string application_name = 6;
+    string version = 7;
+    map<string, string> information = 8;
+}
+
+message Server {
+    string host = 1;
+    int32 port = 2;
+    int32 server_id = 3;
+    bytes token = 4;
+    int32 api_port = 5;
+}

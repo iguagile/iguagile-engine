@@ -1,25 +1,25 @@
 package iguagile
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 )
 
 // Client is a middleman between the connection and the room.
 type Client struct {
-	id     int
-	idByte []byte
-	conn   io.ReadWriteCloser
-	room   *Room
-	send   chan []byte
+	id      int
+	idByte  []byte
+	conn    *quicConn
+	streams map[string]*quicStream
+	room    *Room
 }
 
 // NewClient is Client constructed.
-func NewClient(room *Room, conn io.ReadWriteCloser) (*Client, error) {
-	id, err := room.generator.Generate()
+func NewClient(room *Room, conn *quicConn) (*Client, error) {
+	id, err := room.generator.generate()
 	if err != nil {
 		return nil, err
 	}
@@ -28,72 +28,43 @@ func NewClient(room *Room, conn io.ReadWriteCloser) (*Client, error) {
 	binary.LittleEndian.PutUint16(idByte, uint16(id))
 
 	client := &Client{
-		id:     id,
-		idByte: idByte,
-		conn:   conn,
-		room:   room,
-		send:   make(chan []byte),
+		id:      id,
+		idByte:  idByte,
+		conn:    conn,
+		room:    room,
+		streams: map[string]*quicStream{},
 	}
 
 	return client, nil
 }
 
-func (c *Client) read(buf []byte) (int, error) {
-	_, err := c.conn.Read(buf[:2])
-	if err != nil {
-		return 0, err
-	}
+func (c *Client) readStart(ctx context.Context) {
+	for _, stream := range c.streams {
+		go func(stream *quicStream) {
+			buf := make([]byte, maxMessageSize)
+			receive, err := c.room.service.ReceiveFunc(stream.name)
+			if err != nil {
+				c.room.log.Println(err)
+				return
+			}
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 
-	size := int(binary.LittleEndian.Uint16(buf))
-	receivedSizeSum := 0
-	for receivedSizeSum < size {
-		receivedSize, err := c.conn.Read(buf[receivedSizeSum:size])
-		if err != nil {
-			return 0, err
-		}
+				n, err := stream.Read(buf)
+				if err != nil {
+					c.room.log.Println(err)
+					break
+				}
 
-		receivedSizeSum += receivedSize
-	}
-
-	return size, nil
-}
-
-func (c *Client) readStart() {
-	buf := make([]byte, maxMessageSize)
-	for {
-		n, err := c.read(buf)
-		if err != nil {
-			c.room.log.Println(err)
-			c.room.CloseConnection(c)
-			break
-		}
-
-		if err = c.room.service.Receive(c.id, buf[:n]); err != nil {
-			c.room.log.Println(err)
-			c.room.CloseConnection(c)
-			break
-		}
-	}
-}
-
-func (c *Client) write(message []byte) error {
-	size := len(message)
-	sizeByte := make([]byte, 2, size+2)
-	binary.LittleEndian.PutUint16(sizeByte, uint16(size))
-	message = append(sizeByte, message...)
-	if _, err := c.conn.Write(message); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Client) writeStart() {
-	for {
-		if err := c.write(<-c.send); err != nil {
-			c.room.log.Println(err)
-			c.room.CloseConnection(c)
-			break
-		}
+				if err := receive(c.id, buf[:n]); err != nil {
+					c.room.log.Println(err)
+				}
+			}
+		}(stream)
 	}
 }
 
@@ -105,11 +76,6 @@ func (c *Client) GetID() int {
 // GetIDByte is getter for idByte.
 func (c *Client) GetIDByte() []byte {
 	return c.idByte
-}
-
-// Send is enqueue outbound messages.
-func (c *Client) Send(message []byte) {
-	c.send <- message
 }
 
 // Close closes the connection.
