@@ -369,6 +369,7 @@ dependencies = [
 name = "iguagile_engine"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "prost",
  "redis",
  "tokio",

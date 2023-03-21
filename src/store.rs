@@ -1,5 +1,3 @@
-use std::io;
-
 use iguagile::{Room, Server};
 
 pub mod iguagile {
@@ -7,11 +5,11 @@ pub mod iguagile {
 }
 
 trait Store {
-    fn generate_server_id(&self) -> Result<i64, io::Error>;
-    fn register_server(&self, s: Server) -> Result<(), io::Error>;
-    fn unregister_server(&self, s: Server) -> Result<(), io::Error>;
-    fn register_room(&self, r: Room) -> Result<(), io::Error>;
-    fn unregister_room(&self, r: Room) -> Result<(), io::Error>;
+    fn generate_server_id(&self) -> Result<i64, anyhow::Error>;
+    fn register_server(&self, s: Server) -> Result<(), anyhow::Error>;
+    fn unregister_server(&self, s: Server) -> Result<(), anyhow::Error>;
+    fn register_room(&self, r: Room) -> Result<(), anyhow::Error>;
+    fn unregister_room(&self, r: Room) -> Result<(), anyhow::Error>;
 }
 
 pub struct MemoryStore {
@@ -25,36 +23,31 @@ impl MemoryStore {
 }
 
 impl Store for MemoryStore {
-    fn generate_server_id(&self) -> Result<i64, io::Error> {
-        let conn = self.redis.get_connection();
-        return if conn.is_err() {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "redis connection error",
-            ))
-        } else {
-            let mut conn = conn.unwrap();
-            let result = redis::cmd("incr").arg("server_id").query::<i64>(&mut conn);
-            if result.is_err() {
-                Err(io::Error::new(io::ErrorKind::Other, "redis incr error"))
-            } else {
-                Ok(result.unwrap())
-            }
-        };
+    fn generate_server_id(&self) -> Result<i64, anyhow::Error> {
+        let con = self.redis.get_connection();
+        if let Err(e) = con {
+            return Err(anyhow::anyhow!(e));
+        }
+
+        let id = redis::cmd("incr")
+            .arg("server_id")
+            .query::<i64>(&mut con.unwrap())
+            .unwrap();
+        Ok(id)
     }
-    fn register_server(&self, s: Server) -> Result<(), io::Error> {
+    fn register_server(&self, s: Server) -> Result<(), anyhow::Error> {
         let _ = s;
         Ok(())
     }
-    fn unregister_server(&self, s: Server) -> Result<(), io::Error> {
+    fn unregister_server(&self, s: Server) -> Result<(), anyhow::Error> {
         let _ = s;
         Ok(())
     }
-    fn register_room(&self, r: Room) -> Result<(), io::Error> {
+    fn register_room(&self, r: Room) -> Result<(), anyhow::Error> {
         let _ = r;
         Ok(())
     }
-    fn unregister_room(&self, r: Room) -> Result<(), io::Error> {
+    fn unregister_room(&self, r: Room) -> Result<(), anyhow::Error> {
         let _ = r;
         Ok(())
     }
