@@ -1,7 +1,5 @@
 use iguagile::{Room, Server};
-use redis::Commands;
 use serde_json::json;
-use std::fmt;
 
 pub mod iguagile {
     tonic::include_proto!("iguagile");
