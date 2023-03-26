@@ -2,9 +2,8 @@ use crate::store::MemoryStore;
 use std::process::exit;
 
 mod client;
-mod example;
-mod room;
 mod id;
+mod room;
 
 mod store;
 
