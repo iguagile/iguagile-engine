@@ -3,8 +3,9 @@ use std::process::exit;
 
 mod client;
 mod example;
-mod id_generator;
 mod room;
+mod id;
+
 mod store;
 
 fn main() {
