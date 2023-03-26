@@ -1,14 +1,14 @@
-use crate::client::ClientTrait;
+use crate::client::Client;
 use std::collections::HashMap;
 
 trait RoomTrait<'a> {
-    fn join(&mut self, c: &'a dyn ClientTrait) -> Result<(), anyhow::Error>;
-    fn leave(&mut self, c: &'a dyn ClientTrait) -> Result<(), anyhow::Error>;
+    fn join(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error>;
+    fn leave(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error>;
 }
 
 struct Room<'a> {
     id: u16,
-    clients: HashMap<u16, &'a dyn ClientTrait>,
+    clients: HashMap<u16, &'a dyn Client>,
 }
 
 impl<'a> Room<'a> {
@@ -21,7 +21,7 @@ impl<'a> Room<'a> {
 }
 
 impl<'a> RoomTrait<'a> for Room<'a> {
-    fn join(&mut self, c: &'a dyn ClientTrait) -> Result<(), anyhow::Error> {
+    fn join(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error> {
         let id = c.get_id();
         if self.clients.contains_key(&id) {
             return Err(anyhow::anyhow!("client already joined"));
@@ -30,7 +30,7 @@ impl<'a> RoomTrait<'a> for Room<'a> {
         Ok(())
     }
 
-    fn leave(&mut self, c: &'a dyn ClientTrait) -> Result<(), anyhow::Error> {
+    fn leave(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error> {
         let id = c.get_id();
         if !self.clients.contains_key(&id) {
             return Err(anyhow::anyhow!("client not joined"));

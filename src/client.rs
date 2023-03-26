@@ -1,37 +1,27 @@
-use std::net::UdpSocket;
+use std::net::{ToSocketAddrs, UdpSocket};
 use std::sync::Arc;
 
-pub trait ClientTrait {
+pub trait Client {
     fn get_id(&self) -> u16;
-    fn get_id_byte(&self) -> &[u8];
     fn read_loop(&mut self);
 }
 
-struct Client {
+struct QUICClient {
     id: u16,
-    id_byte: [u8; 2],
     sock: Arc<UdpSocket>,
 }
 
-impl Client {
-    pub fn new(id: u16, addr: String) -> Result<Self, anyhow::Error> {
-        let sock = UdpSocket::bind(addr);
-        if let Err(e) = sock {
-            return Err(anyhow::anyhow!(e));
-        }
-        let id_byte = id.to_be_bytes();
-        let sock = Arc::new(sock.unwrap());
-        Ok(Client { id, id_byte, sock })
+impl QUICClient {
+    pub fn new(id: u16, addr: impl ToSocketAddrs) -> Result<Self, anyhow::Error> {
+        let sock = UdpSocket::bind(addr)?;
+        let sock = Arc::new(sock);
+        Ok(QUICClient { id, sock })
     }
 }
 
-impl ClientTrait for Client {
+impl Client for QUICClient {
     fn get_id(&self) -> u16 {
         self.id
-    }
-
-    fn get_id_byte(&self) -> &[u8] {
-        &self.id_byte
     }
 
     fn read_loop(&mut self) {
