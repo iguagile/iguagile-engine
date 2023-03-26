@@ -15,12 +15,9 @@ struct Client {
 
 impl Client {
     pub fn new(id: u16, addr: String) -> Result<Self, anyhow::Error> {
-        let sock = UdpSocket::bind(addr);
-        if let Err(e) = sock {
-            return Err(anyhow::anyhow!(e));
-        }
+        let sock = UdpSocket::bind(addr)?;
         let id_byte = id.to_be_bytes();
-        let sock = Arc::new(sock.unwrap());
+        let sock = Arc::new(sock);
         Ok(Client { id, id_byte, sock })
     }
 }
