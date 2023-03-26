@@ -1,32 +1,42 @@
 use std::collections::HashSet;
 
+pub trait IdPool {
+    fn is_empty(&self) -> bool;
+    fn len(&self) -> usize;
+    fn clear(&mut self);
+    fn get_id(&mut self) -> Option<u16>;
+    fn return_id(&mut self, id: u16) -> bool;
+}
+
 #[derive(Clone, Debug)]
-pub struct IdPool {
+pub struct MemoryIdPool {
     available_ids: HashSet<u16>,
 }
 
-impl IdPool {
+impl MemoryIdPool {
     pub fn new() -> Self {
         let available_ids: HashSet<u16> = (0..=u16::MAX).collect();
         Self { available_ids }
     }
+}
 
-    pub fn is_empty(&self) -> bool {
+impl IdPool for MemoryIdPool {
+    fn is_empty(&self) -> bool {
         self.available_ids.is_empty()
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.available_ids.len()
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.available_ids.clear();
         for i in 0..=u16::MAX {
             self.available_ids.insert(i);
         }
     }
 
-    pub fn get_id(&mut self) -> Option<u16> {
+    fn get_id(&mut self) -> Option<u16> {
         let id = self.available_ids.iter().next().cloned();
         if let Some(id) = id {
             self.available_ids.remove(&id);
@@ -34,7 +44,7 @@ impl IdPool {
         id
     }
 
-    pub fn return_id(&mut self, id: u16) -> bool {
+    fn return_id(&mut self, id: u16) -> bool {
         self.available_ids.insert(id)
     }
 }
@@ -44,8 +54,8 @@ pub mod tests {
     use super::*;
 
     #[test]
-    fn id_pool_new() {
-        let pool = IdPool::new();
+    fn memory_id_pool_new() {
+        let pool = MemoryIdPool::new();
         assert_eq!(pool.available_ids.len(), 65536);
         for i in 0..=65535 {
             assert!(pool.available_ids.contains(&i));
@@ -53,20 +63,20 @@ pub mod tests {
     }
 
     #[test]
-    fn id_pool_is_empty() {
-        let pool = IdPool {
+    fn memory_id_pool_is_empty() {
+        let pool = MemoryIdPool {
             available_ids: [0].into(),
         };
         assert!(!pool.is_empty());
-        let pool = IdPool {
+        let pool = MemoryIdPool {
             available_ids: Default::default(),
         };
         assert!(pool.is_empty());
     }
 
     #[test]
-    fn id_pool_len() {
-        let mut pool = IdPool::new();
+    fn memory_id_pool_len() {
+        let mut pool = MemoryIdPool::new();
         assert_eq!(pool.len(), 65536);
         assert!(pool.get_id().is_some());
         assert_eq!(pool.len(), 65535);
@@ -77,8 +87,8 @@ pub mod tests {
     }
 
     #[test]
-    fn id_pool_clear() {
-        let mut pool = IdPool {
+    fn memory_id_pool_clear() {
+        let mut pool = MemoryIdPool {
             available_ids: Default::default(),
         };
         assert_eq!(pool.available_ids.len(), 0);
@@ -87,8 +97,8 @@ pub mod tests {
     }
 
     #[test]
-    fn id_pool_get_id() {
-        let mut pool = IdPool::new();
+    fn memory_id_pool_get_id() {
+        let mut pool = MemoryIdPool::new();
         for _ in 0..=u16::MAX {
             let id = pool.get_id().unwrap();
             assert!(!pool.available_ids.contains(&id));
@@ -97,8 +107,8 @@ pub mod tests {
     }
 
     #[test]
-    fn id_pool_return_id() {
-        let mut pool = IdPool {
+    fn memory_id_pool_return_id() {
+        let mut pool = MemoryIdPool {
             available_ids: Default::default(),
         };
         for id in 0..=u16::MAX {
