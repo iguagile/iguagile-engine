@@ -1,6 +1,6 @@
 use crate::store::MemoryStore;
 
-mod id_generator;
+mod id;
 mod store;
 
 fn main() {
