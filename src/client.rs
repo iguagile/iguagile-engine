@@ -6,7 +6,7 @@ pub trait Client {
     fn read_loop(&mut self);
 }
 
-struct QUICClient {
+pub struct QUICClient {
     id: u16,
     sock: Arc<UdpSocket>,
 }

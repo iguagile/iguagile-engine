@@ -33,7 +33,7 @@ type Engine struct {
 	idGenerator          *idGenerator
 	logger               *log.Logger
 	serverProto          *pb.Server
-	RoomUpdateDuration   time.Duration
+	room_update_duration   time.Duration
 	ServerUpdateDuration time.Duration
 }
 
@@ -44,7 +44,7 @@ func New(factory RoomServiceFactory, store Store) *Engine {
 		factory:              factory,
 		store:                store,
 		logger:               log.New(os.Stdout, "iguagile-engine ", log.Lshortfile),
-		RoomUpdateDuration:   time.Minute * 3,
+		room_update_duration:   time.Minute * 3,
 		ServerUpdateDuration: time.Minute * 3,
 	}
 }
@@ -124,7 +124,7 @@ func (e *Engine) Start(ctx context.Context, address, apiAddress string, tlsConf 
 
 	go func(ctx context.Context) {
 		serverTicker := time.NewTicker(e.ServerUpdateDuration)
-		roomTicker := time.NewTicker(e.RoomUpdateDuration)
+		roomTicker := time.NewTicker(e.room_update_duration)
 		defer serverTicker.Stop()
 		defer roomTicker.Stop()
 		for {
