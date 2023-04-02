@@ -1,16 +1,12 @@
 use crate::client::{Client, QUICClient};
 use crate::engine::Engine;
 use crate::id::{IdPool, MemoryIdPool};
-use crate::store::iguagile::room_service_server::RoomService;
 use crate::store::{iguagile, MemoryStore, Store};
 use anyhow::Error;
 use std::collections::HashMap;
-use std::ffi::c_long;
-use std::net::ToSocketAddrs;
-use std::sync::Mutex;
-use tonic::codegen::futures_core::ready;
+use std::rc::Rc;
 
-struct RoomConfig {
+pub struct RoomConfig {
     room_id: u16,
     application_name: String,
     version: String,
@@ -20,9 +16,9 @@ struct RoomConfig {
     token: Vec<u8>,
 }
 
-trait RoomTrait<'a> {
-    fn join(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error>;
-    fn leave(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error>;
+trait RoomTrait {
+    fn join(&mut self, c: Box<dyn Client>) -> Result<(), anyhow::Error>;
+    fn leave(&mut self, c: Box<dyn Client>) -> Result<(), anyhow::Error>;
 }
 
 trait ClientManagerTrait {
@@ -35,21 +31,19 @@ trait ClientManagerTrait {
     fn first(&self) -> Result<&dyn Client, anyhow::Error>;
 }
 
-struct ClientManager<'a> {
-    clients: HashMap<u16, &'a dyn Client>,
-    mutex: Mutex<()>,
+struct ClientManager {
+    clients: Rc<HashMap<u16, Box<dyn Client>>>,
 }
 
-impl<'a> ClientManager<'a> {
+impl ClientManager {
     pub fn new() -> Self {
         ClientManager {
-            clients: HashMap::new(),
-            mutex: Mutex::new(()),
+            clients: Rc::new(HashMap::new()),
         }
     }
 }
 
-impl<'a> ClientManagerTrait for ClientManager<'a> {
+impl ClientManagerTrait for ClientManager {
     fn get(&self, client_id: u16) -> Result<&dyn Client, Error> {
         todo!()
     }
@@ -79,37 +73,37 @@ impl<'a> ClientManagerTrait for ClientManager<'a> {
     }
 }
 
-pub struct Room<'a> {
-    clients: &'a dyn ClientManagerTrait,
-    id_pool: &'a dyn IdPool,
-    host: &'a dyn Client,
+pub struct Room {
+    clients: Box<dyn ClientManagerTrait>,
+    id_pool: Box<dyn IdPool>,
+    host: Box<dyn Client>,
     config: RoomConfig,
     creator_connected: bool,
     room_proto: iguagile::Room,
-    store: &'a dyn Store,
-    engine: Engine<'a>,
+    store: Box<dyn Store>,
+    engine: Engine,
     // service: RoomService,
-    streams: HashMap<String, &'a dyn Client>,
+    streams: HashMap<String, Rc<dyn Client>>,
     ready: bool,
 }
 
-impl<'a> Room<'a> {
+impl Room {
     pub fn new(config: RoomConfig) -> Self {
         Room {
-            clients: &ClientManager::new(),
-            id_pool: &MemoryIdPool::new(),
-            host: &QUICClient::new(1, "127.0.0.1").unwrap(),
+            clients: Box::new(ClientManager::new()),
+            id_pool: Box::new(MemoryIdPool::new()),
+            host: Box::new(QUICClient::new(1, "127.0.0.1").unwrap()),
             config: config,
             creator_connected: false,
             room_proto: iguagile::Room::default(),
-            store: &MemoryStore::new(redis::Client::open("redis://").unwrap()),
+            store: Box::new(MemoryStore::new(redis::Client::open("redis://").unwrap())),
             engine: Engine::new(
-                0,
-                &MemoryStore::new(redis::Client::open("redis://").unwrap()),
-                &MemoryIdPool::new(),
+                1,
+                Box::new(MemoryStore::new(redis::Client::open("redis://").unwrap())),
+                Box::new(MemoryIdPool::new()),
                 &iguagile::Server::default(),
-                std::time::Duration::from_secs(0),
-                std::time::Duration::from_secs(0),
+                std::time::Duration::from_secs(1),
+                std::time::Duration::from_secs(1),
             ),
             streams: HashMap::new(),
             ready: false,
@@ -117,21 +111,20 @@ impl<'a> Room<'a> {
     }
 }
 
-impl<'a> RoomTrait<'a> for Room<'a> {
-    fn join(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error> {
+impl RoomTrait for Room {
+    fn join(&mut self, c: Box<dyn Client>) -> Result<(), anyhow::Error> {
         let id = c.get_id();
         if self.clients.exists(id) {
             return Err(anyhow::anyhow!("client already joined"));
         }
-        self.clients.add(id, c)
+        self.clients.add(id, &*c)
     }
 
-    fn leave(&mut self, c: &'a dyn Client) -> Result<(), anyhow::Error> {
+    fn leave(&mut self, c: Box<dyn Client>) -> Result<(), anyhow::Error> {
         let id = c.get_id();
         if !self.clients.exists(id) {
             return Err(anyhow::anyhow!("client not joined"));
         }
-        self.clients.remove(id);
-        Ok(())
+        self.clients.remove(id)
     }
 }

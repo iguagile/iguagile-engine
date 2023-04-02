@@ -10,16 +10,16 @@ trait RelayServiceTrait {
     fn destroy(&self) -> Result<(), anyhow::Error>;
 }
 
-pub struct RelayService<'a> {
-    room: Room<'a>,
+pub struct RelayService {
+    room: Room,
 }
 
-impl<'a> RelayService<'a> {
+impl RelayService {
     pub fn new(room: Room) -> Self {
         RelayService { room }
     }
 }
-impl<'a> RelayServiceTrait for RelayService<'a> {
+impl RelayServiceTrait for RelayService {
     fn receive_func(&self, stream_name: String) -> Result<&ReceiveFunc, anyhow::Error> {
         anyhow::bail!("Not implemented");
     }
