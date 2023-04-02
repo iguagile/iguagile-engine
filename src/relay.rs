@@ -19,6 +19,7 @@ impl RelayService {
         RelayService { room }
     }
 }
+
 impl RelayServiceTrait for RelayService {
     fn receive_func(&self, stream_name: String) -> Result<&ReceiveFunc, anyhow::Error> {
         anyhow::bail!("Not implemented");

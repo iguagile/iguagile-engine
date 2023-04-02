@@ -1,5 +1,6 @@
-use crate::store::MemoryStore;
 use std::process::exit;
+
+use crate::store::MemoryStore;
 
 mod client;
 mod engine;

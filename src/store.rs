@@ -1,5 +1,6 @@
-use iguagile::{Room, Server};
 use serde_json::json;
+
+use iguagile::{Room, Server};
 
 pub mod iguagile {
     tonic::include_proto!("iguagile");

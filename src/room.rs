@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+use std::rc::Rc;
+
+use anyhow::{anyhow, Error};
+
 use crate::client::{Client, QUICClient};
 use crate::engine::Engine;
 use crate::id::{IdPool, MemoryIdPool};
 use crate::store::{iguagile, MemoryStore, Store};
-use anyhow::Error;
-use std::collections::HashMap;
-use std::rc::Rc;
 
 pub struct RoomConfig {
     room_id: u16,
