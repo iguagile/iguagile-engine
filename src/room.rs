@@ -103,7 +103,7 @@ impl Room {
                 1,
                 Box::new(MemoryStore::new(redis::Client::open("redis://").unwrap())),
                 Box::new(MemoryIdPool::new()),
-                &iguagile::Server::default(),
+                iguagile::Server::default(),
                 std::time::Duration::from_secs(1),
                 std::time::Duration::from_secs(1),
             ),

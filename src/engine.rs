@@ -22,7 +22,7 @@ impl Engine {
         server_id: i64,
         store: Box<dyn Store>,
         id_pool: Box<dyn IdPool>,
-        server_proto: &iguagile::Server,
+        server_proto: iguagile::Server,
         room_update_duration: time::Duration,
         server_update_duration: time::Duration,
     ) -> Self {
@@ -32,7 +32,7 @@ impl Engine {
             // factory: RoomServiceFactory::new(),
             store: store,
             id_pool: id_pool,
-            server_proto: server_proto.clone(),
+            server_proto: server_proto,
             room_update_duration: room_update_duration,
             server_update_duration: server_update_duration,
         }
