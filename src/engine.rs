@@ -1,16 +1,12 @@
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::net::{SocketAddr, UdpSocket};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time;
-use std::time::Duration;
 
-use anyhow::anyhow;
 use mio::{net, Events, Interest, Poll, Token};
 use ring::rand::SystemRandom;
 
-use crate::client::Client;
 use crate::id::IdPool;
 use crate::room::Room;
 use crate::store::{iguagile, Store};
