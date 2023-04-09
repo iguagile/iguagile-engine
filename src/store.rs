@@ -1,5 +1,6 @@
-use iguagile::{Room, Server};
 use serde_json::json;
+
+use iguagile::{Room, Server};
 
 pub mod iguagile {
     tonic::include_proto!("iguagile");
@@ -10,7 +11,7 @@ const UNREGISTER_SERVER: &str = "server_unregister";
 const REGISTER_ROOM: &str = "room_register";
 const UNREGISTER_ROOM: &str = "room_unregister";
 
-trait Store {
+pub trait Store {
     fn generate_server_id(&self) -> Result<i64, anyhow::Error>;
     fn register_server(&self, s: Server) -> Result<(), anyhow::Error>;
     fn unregister_server(&self, s: Server) -> Result<(), anyhow::Error>;
