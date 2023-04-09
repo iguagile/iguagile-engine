@@ -5,14 +5,27 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-quiche = "0.16.0"
-tonic = "0.8"
+quiche = "0.17.1"
+tonic = "0.9.1"
 prost = "0.11"
-redis = "0.22.3"
+redis = "0.23.0"
 anyhow = "1.0"
 serde_json = "1.0"
 bitmaps = "3.2.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+log = { version = "0.4", features = ["std"] }
+libc = "0.2"
+libm = "0.2"
+ring = "0.16"
+slab = "0.4"
+lazy_static = "1"
+boring = { version = "2.0.0", optional = true }
+foreign-types-shared = { version = "0.3.0", optional = true }
+sfv = { version = "0.9", optional = true }
+smallvec = { version = "1.10", features = ["serde", "union"] }
 
 [build-dependencies]
-tonic-build = "0.8"
+tonic-build = "0.9.0"
+
+[dev-dependencies]
+mio = { version = "0.8", features = ["net", "os-poll"] }
