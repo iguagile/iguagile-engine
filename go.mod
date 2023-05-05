@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/iguagile/iguagile-room-proto v0.0.0-20230322040411-8bfc4aa9dbc9
 	github.com/minami14/idgo v1.1.1
-	google.golang.org/grpc v1.54.0
+	google.golang.org/grpc v1.55.0
 )
 
 require (
@@ -16,6 +16,6 @@ require (
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 )
