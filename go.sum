@@ -11,6 +11,8 @@ github.com/iguagile/iguagile-room-proto v0.0.0-20230322040411-8bfc4aa9dbc9 h1:Op
 github.com/iguagile/iguagile-room-proto v0.0.0-20230322040411-8bfc4aa9dbc9/go.mod h1:pTWYKVy4FbTaKE6WtSXNM+Afl4m1vjp2/VVdNbhWgPA=
 github.com/iguagile/iguagile-room-proto v0.0.0-20230505035409-c32f3c4359f9 h1:kQ1Xg01me47hzX7ZkIDQTCuqO4HrwVwHPoJgSaUl/Y8=
 github.com/iguagile/iguagile-room-proto v0.0.0-20230505035409-c32f3c4359f9/go.mod h1:TL3lpGYBF+mD2Ia3fsqV1/EhnfGtzJen+XGWWTajuoM=
+github.com/iguagile/iguagile-room-proto v0.0.0-20230622035817-c6a324325a06 h1:Yhl4+KVjQsTTwPVUwYqqrDizEeOEVVW3xRqB0ZkmbHY=
+github.com/iguagile/iguagile-room-proto v0.0.0-20230622035817-c6a324325a06/go.mod h1:LZFMietn7XTkDTqBBbRaX/FyQ5cOGSnU5RTq6jzUxD8=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/minami14/go-bitarray v1.1.2 h1:E+Nd3dGG+aLhpVlSaJCC7Fh+3xGsaT0zbuvrrJC+dyg=
 github.com/minami14/go-bitarray v1.1.2/go.mod h1:i6OBYFrV3uyrMpN1jwB2fAwLypdT9FIPAOiognNQ8wc=
@@ -37,6 +39,8 @@ google.golang.org/grpc v1.55.0 h1:3Oj82/tFSCeUrRTg/5E/7d/W5A1tj6Ky1ABAuZuv5ag=
 google.golang.org/grpc v1.55.0/go.mod h1:iYEXKGkEBhg1PjZQvoYEVPTDkHo1/bjTnfwTeGONTY8=
 google.golang.org/grpc v1.56.0 h1:+y7Bs8rtMd07LeXmL3NxcTLn7mUkbKZqEpPhMNkwJEE=
 google.golang.org/grpc v1.56.0/go.mod h1:I9bI3vqKfayGqPUAwGdOSu7kt6oIJLixfffKrpXqQ9s=
+google.golang.org/grpc v1.56.1 h1:z0dNfjIl0VpaZ9iSVjA6daGatAYwPGstTjt5vkRMFkQ=
+google.golang.org/grpc v1.56.1/go.mod h1:I9bI3vqKfayGqPUAwGdOSu7kt6oIJLixfffKrpXqQ9s=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
 google.golang.org/protobuf v1.30.0 h1:kPPoIgf3TsEvrm0PFe15JQ+570QVxYzEvvHqChK+cng=
