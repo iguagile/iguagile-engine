@@ -27,13 +27,12 @@ services:
 #      context: .
 #      dockerfile: Dockerfile
     image: ghcr.io/iguagile/iguagile-engine:latest
-
     ports:
       - "14000:4000"
       - "15000:5000"
     networks:
       iguagile-network:
-        ipv4_address: 192.168.10.5
+        ipv4_address: 192.168.10.5      # assign for connect by host machine
     environment:
       ROOM_HOST: 192.168.10.5:10000     # require other container connect hostname
       REDIS_HOST: redis:6379            # register server pub/sub and id generator
