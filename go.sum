@@ -7,8 +7,6 @@ github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/iguagile/iguagile-room-proto v0.0.0-20230622035817-c6a324325a06 h1:Yhl4+KVjQsTTwPVUwYqqrDizEeOEVVW3xRqB0ZkmbHY=
-github.com/iguagile/iguagile-room-proto v0.0.0-20230622035817-c6a324325a06/go.mod h1:LZFMietn7XTkDTqBBbRaX/FyQ5cOGSnU5RTq6jzUxD8=
 github.com/iguagile/iguagile-room-proto v0.0.0-20230709141737-b58cae5f0141 h1:zHIIb2DzUu2J6vVCzLQCpKRln8Syg0nKLWrxs29y8q0=
 github.com/iguagile/iguagile-room-proto v0.0.0-20230709141737-b58cae5f0141/go.mod h1:v7WltIb/HJOwsI1jrp+nHjv7vzE8DmrdX/QoTpcyPuc=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=

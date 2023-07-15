@@ -3,13 +3,48 @@ version: '3.1'
 services:
   redis:
     image: redis:latest
-    ports:
-      - "6379:6379"
+    networks:
+      - iguagile-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
 
   iguagile-api:
-    image: ghcr.io/iguagile/iguagile-engine:latest
+    image: ghcr.io/iguagile/iguagile-api:latest
     ports:
       - "8080:80"
     environment:
       REDIS_HOST: redis:6379
+      GRPC_HOST: iguagile-engine:10000
+    networks:
+      - iguagile-network
+    depends_on:
+      redis:
+        condition: service_healthy
 
+  iguagile-engine:
+# # comments out for local development
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+    image: ghcr.io/iguagile/iguagile-engine:latest
+    ports:
+      - "14000:4000"
+      - "15000:5000"
+    networks:
+      iguagile-network:
+        ipv4_address: 192.168.10.5      # assign for connect by host machine
+    environment:
+      ROOM_HOST: 192.168.10.5:10000     # require other container connect hostname
+      REDIS_HOST: redis:6379            # register server pub/sub and id generator
+      GRPC_PORT: 10001                  # server register rpc
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  iguagile-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.10.0/24
